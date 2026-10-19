@@ -54,6 +54,40 @@ return [
             'actions' => ['view'],
         ],
 
+        // ---- Module 2: Factory & Department Management --------------
+        'factories' => [
+            'label' => 'Factories',
+            'group' => 'Factory Setup',
+            // access-all: data scope covering every factory; without it a
+            // user only sees factories they are assigned to.
+            'actions' => ['view', 'create', 'update', 'deactivate', 'access-all'],
+        ],
+        'departments' => [
+            'label' => 'Departments',
+            'group' => 'Factory Setup',
+            'actions' => ['view', 'create', 'update', 'deactivate', 'assign-users', 'assign-managers'],
+        ],
+        'warehouses' => [
+            'label' => 'Warehouses',
+            'group' => 'Factory Setup',
+            'actions' => ['view', 'create', 'update', 'deactivate'],
+        ],
+        'locations' => [
+            'label' => 'Storage Locations',
+            'group' => 'Factory Setup',
+            'actions' => ['view', 'create', 'update', 'deactivate', 'delete'],
+        ],
+        'factory-structure' => [
+            'label' => 'Factory Structure',
+            'group' => 'Factory Setup',
+            'actions' => ['view', 'export'],
+        ],
+        'structure-types' => [
+            'label' => 'Department & Warehouse Types',
+            'group' => 'Factory Setup',
+            'actions' => ['view', 'create', 'update'],
+        ],
+
         // ---- Reserved namespaces for future modules (no functionality yet)
         'inventory' => [
             'label' => 'Inventory',
@@ -148,6 +182,50 @@ return [
             'permissions' => [
                 'dashboard.view',
                 'quality-control.*', 'production-tracking.view',
+            ],
+        ],
+    ],
+
+    /*
+    | Module 2: factory & physical structure.
+    */
+    'structure' => [
+        'factory_types' => [
+            'manufacturing' => 'Manufacturing',
+            'warehouse' => 'Warehouse',
+            'other' => 'Other',
+        ],
+
+        'location_types' => [
+            'zone' => 'Zone',
+            'room' => 'Room',
+            'rack' => 'Rack',
+            'shelf' => 'Shelf',
+            'bin' => 'Bin',
+            'floor_area' => 'Floor Area',
+            'other' => 'Other',
+        ],
+
+        // Maximum nesting depth of storage locations (1 = top level only).
+        'max_location_depth' => (int) env('ERP_MAX_LOCATION_DEPTH', 6),
+
+        /*
+        | Tables that will reference structure records once future modules
+        | exist, as [table => foreign key column]. A record referenced by any
+        | of them cannot be permanently deleted. Inventory registers e.g.
+        | 'stock_movements' => 'location_id' here.
+        */
+        'location_references' => [],
+
+        // Suggested types seeded once; administrators can add more.
+        'suggested_types' => [
+            'department' => [
+                'Stores', 'Production', 'Casting', 'Machining', 'Finishing', 'Polishing', 'Coating',
+                'Assembly', 'Quality Control', 'Packing', 'Dispatch', 'Maintenance', 'Administration',
+            ],
+            'warehouse' => [
+                'Raw Material Store', 'Work-in-Progress Store', 'Finished Goods Store', 'QC Hold Area',
+                'Rework Area', 'Rejected Material Area', 'Packing Area', 'Dispatch Staging Area', 'General Store',
             ],
         ],
     ],

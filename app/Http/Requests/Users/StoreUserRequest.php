@@ -25,8 +25,6 @@ class StoreUserRequest extends FormRequest
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($this->route('user'))],
             'employee_code' => ['nullable', 'string', 'max:30', 'regex:/^[A-Z0-9_\-\/]+$/', Rule::unique('users', 'employee_code')->ignore($this->route('user'))],
             'mobile' => ['nullable', 'string', 'regex:/^\+?[0-9][0-9\s\-]{6,18}$/'],
-            // Departments arrive in Module 2; the FK is added then.
-            'department_id' => ['nullable', 'integer', 'min:1'],
             'role_ids' => ['required', 'array', 'min:1'],
             'role_ids.*' => ['integer', 'distinct', Rule::exists('roles', 'id')->where('guard_name', 'web')->where('is_active', true)],
             'is_active' => ['sometimes', 'boolean'],

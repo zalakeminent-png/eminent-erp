@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Services\Structure\StructureScope;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -16,7 +17,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Per-request cache of the user's factory data scope.
+        $this->app->scoped(StructureScope::class);
     }
 
     /**

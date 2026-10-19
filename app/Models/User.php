@@ -8,6 +8,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Collection;
@@ -19,9 +20,11 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, HasRoles, Notifiable;
 
+    // factory_id / department_id are set only through the assignment
+    // workflow (StructureAssignmentService), never by mass assignment.
     protected $fillable = [
         'company_id', 'employee_code', 'first_name', 'last_name', 'email', 'mobile',
-        'department_id', 'password', 'is_active',
+        'password', 'is_active',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -40,6 +43,22 @@ class User extends Authenticatable
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    /** Primary factory assignment ("where" the user works, not "what" they may do). */
+    public function primaryFactory(): BelongsTo
+    {
+        return $this->belongsTo(Factory::class, 'factory_id');
+    }
+
+    public function primaryDepartment(): BelongsTo
+    {
+        return $this->belongsTo(Department::class, 'department_id');
+    }
+
+    public function additionalDepartments(): BelongsToMany
+    {
+        return $this->belongsToMany(Department::class)->withPivot('assigned_by')->withTimestamps();
     }
 
     public function getFullNameAttribute(): string

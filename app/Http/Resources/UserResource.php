@@ -19,7 +19,18 @@ class UserResource extends JsonResource
             'full_name' => $this->full_name,
             'email' => $this->email,
             'mobile' => $this->mobile,
+            'factory_id' => $this->factory_id,
             'department_id' => $this->department_id,
+            'factory' => $this->whenLoaded('primaryFactory', fn () => $this->primaryFactory ? [
+                'id' => $this->primaryFactory->id, 'code' => $this->primaryFactory->code, 'name' => $this->primaryFactory->name,
+            ] : null),
+            'department' => $this->whenLoaded('primaryDepartment', fn () => $this->primaryDepartment ? [
+                'id' => $this->primaryDepartment->id, 'code' => $this->primaryDepartment->code, 'name' => $this->primaryDepartment->name,
+                'factory_id' => $this->primaryDepartment->factory_id,
+            ] : null),
+            'additional_departments' => $this->whenLoaded('additionalDepartments', fn () => $this->additionalDepartments->map(fn ($d) => [
+                'id' => $d->id, 'code' => $d->code, 'name' => $d->name, 'factory_id' => $d->factory_id,
+            ])->values()),
             'is_active' => $this->is_active,
             'last_login_at' => $this->last_login_at?->toIso8601String(),
             'deactivated_at' => $this->deactivated_at?->toIso8601String(),
