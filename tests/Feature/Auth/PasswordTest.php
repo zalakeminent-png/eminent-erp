@@ -3,6 +3,7 @@
 namespace Tests\Feature\Auth;
 
 use App\Models\ActivityLog;
+use App\Models\Role;
 use App\Models\User;
 use App\Notifications\ResetPasswordNotification;
 use App\Notifications\UserInvitationNotification;
@@ -82,7 +83,7 @@ class PasswordTest extends TestCase
     {
         Notification::fake();
         $admin = $this->createAdmin();
-        $roleId = \App\Models\Role::findByName('QC')->id;
+        $roleId = Role::findByName('QC')->id;
 
         $this->actingAs($admin)->postJson($this->api('users'), [
             'first_name' => 'Ravi', 'last_name' => 'Kumar', 'email' => 'ravi@factory.test', 'role_ids' => [$roleId],

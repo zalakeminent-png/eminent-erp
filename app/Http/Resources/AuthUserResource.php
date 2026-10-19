@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Company;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 /**
@@ -10,7 +11,7 @@ use Illuminate\Http\Request;
  * list the SPA uses to show/hide navigation. (The API still enforces every
  * permission server-side.)
  *
- * @mixin \App\Models\User
+ * @mixin User
  */
 class AuthUserResource extends UserResource
 {

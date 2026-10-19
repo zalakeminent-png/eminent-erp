@@ -5,6 +5,7 @@ namespace Tests\Feature\Auth;
 use App\Models\ActivityLog;
 use App\Models\User;
 use Illuminate\Support\Facades\RateLimiter;
+use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 class AuthenticationTest extends TestCase
@@ -107,7 +108,7 @@ class AuthenticationTest extends TestCase
         $this->actingAs($user)->getJson($this->api('users'))->assertOk();
 
         $user->roles->first()->update(['is_active' => false]);
-        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         $this->actingAs($user->fresh())->getJson($this->api('users'))->assertForbidden();
     }

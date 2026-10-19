@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\ActivityLog;
 use App\Models\Role;
+use App\Models\User;
 use App\Services\ActivityLogger;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Notification;
@@ -23,7 +24,7 @@ class ActivityLogTest extends TestCase
             'first_name' => 'Kiran', 'last_name' => 'Patil', 'email' => 'kiran@factory.test',
             'role_ids' => [Role::findByName('QC')->id],
         ])->assertCreated();
-        $userId = \App\Models\User::where('email', 'kiran@factory.test')->value('id');
+        $userId = User::where('email', 'kiran@factory.test')->value('id');
 
         $this->patchJson($this->api("users/{$userId}/status"), ['is_active' => false])->assertOk();
         $roleId = $this->postJson($this->api('roles'), ['name' => 'Auditor'])->json('data.id');

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Users;
 
+use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\UserSessions;
@@ -183,7 +184,7 @@ class UserManagementTest extends TestCase
             ->assertForbidden(); // the first admin is now inactive and is blocked outright
 
         // With exactly one active admin left, nobody can deactivate them.
-        $delegate = $this->createUserWithPermissions(\App\Models\Permission::pluck('name')->all());
+        $delegate = $this->createUserWithPermissions(Permission::pluck('name')->all());
         $this->actingAs($delegate)->patchJson($this->api("users/{$otherAdmin->id}/status"), ['is_active' => false])
             ->assertUnprocessable()->assertJsonValidationErrors('is_active');
 
@@ -192,7 +193,7 @@ class UserManagementTest extends TestCase
 
     public function test_final_administrator_role_cannot_be_removed(): void
     {
-        $delegate = $this->createUserWithPermissions(\App\Models\Permission::pluck('name')->all());
+        $delegate = $this->createUserWithPermissions(Permission::pluck('name')->all());
 
         $this->actingAs($delegate)->putJson($this->api("users/{$this->admin->id}"), [
             'first_name' => $this->admin->first_name,

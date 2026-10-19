@@ -1,59 +1,83 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Eminent Factory ERP
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Manufacturing ERP built with Laravel 12 (REST API), React 18 + TypeScript (SPA), PostgreSQL,
+Sanctum cookie authentication and Spatie Laravel Permission.
 
-## About Laravel
+**Implemented:** Module 1 — System Settings & User Management (authentication, company settings,
+users, roles, permission matrix, activity logs). Later modules (Inventory, Orders, Production,
+QC, Dispatch, Accounting, HR) have reserved permission namespaces only.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Architecture
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+| Layer | Location | Notes |
+|---|---|---|
+| API | `routes/api.php` → `app/Http/Controllers/Api/V1` | All under `/api/v1`, permission middleware on every route |
+| Auth | Sanctum stateful SPA (session cookie + CSRF) | No tokens in `localStorage`; no public registration |
+| RBAC | `config/erp.php` permission catalogue (`module.action`) | Authorization is permission-based, never by role name |
+| Safeguards | `app/Services/AccessGuard.php` | Privilege-escalation and last-administrator protection |
+| Audit | `app/Services/ActivityLogger.php`, `activity_logs` table | Sanitized metadata, append-only, retention pruning |
+| SPA | `resources/js` (served by `resources/views/app.blade.php`) | Same origin as the API |
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Requirements
 
-## Learning Laravel
+- PHP 8.2+ with `pdo_pgsql`, `pgsql`, `gd`, `fileinfo`, `mbstring`
+- Composer 2, Node.js 20+ (tested with 24), PostgreSQL 14+
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+## Setup
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+```bash
+composer install
+npm install
+cp .env.example .env          # then edit DB_* and MAIL_* values
+php artisan key:generate
 
-## Laravel Sponsors
+# PostgreSQL: create the database first, e.g.
+#   createdb -U postgres eminent_erp
+php artisan migrate --seed    # company, 5 core roles, 50 permissions; no users
+php artisan storage:link      # public URL for company logos
+php artisan erp:create-admin  # interactive; prompts for email, name, password (hidden)
+```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+`erp:create-admin` refuses to run once an active administrator exists (use `--force` to add
+another). On Windows the hidden password prompt needs a real console; it can't read piped input.
 
-### Premium Partners
+## Running
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+```bash
+php artisan serve             # http://localhost:8000
+npm run dev                   # Vite dev server with HMR (or `npm run build` for production assets)
+php artisan schedule:work     # local scheduler: activity-log pruning, expired reset tokens
+```
 
-## Contributing
+Open http://localhost:8000 and sign in with the administrator account.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Environment variables (beyond Laravel defaults)
 
-## Code of Conduct
+| Variable | Purpose |
+|---|---|
+| `SANCTUM_STATEFUL_DOMAINS` | Hosts allowed to use cookie auth (include host:port) |
+| `FRONTEND_URL` | Base URL used in password reset / invitation emails |
+| `CORS_ALLOWED_ORIGINS` | Comma-separated origins (only needed if the SPA is served from another origin) |
+| `SESSION_SECURE_COOKIE` | Set `true` in production (HTTPS) |
+| `SESSION_ENCRYPT` | `true` — session payload encrypted at rest |
+| `AUTH_PASSWORD_RESET_EXPIRE` | Minutes a reset/invitation link is valid (default 60) |
+| `ACTIVITY_LOG_RETENTION_DAYS` | Empty = keep forever; otherwise pruned daily |
+| `ERP_COMPANY_NAME`, `ERP_COMPANY_CODE` | Initial company created by the seeder |
+| `ERP_LOGO_MAX_KB` | Logo upload limit (default 2048) |
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Mail must be configured (`MAIL_*`) for invitations and password resets. With `MAIL_MAILER=log`,
+emails are written to `storage/logs/laravel.log`.
 
-## Security Vulnerabilities
+## Tests
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+php artisan test   # backend feature tests (SQLite in-memory)
+npm test           # frontend (Vitest + Testing Library)
+npm run typecheck
+```
 
-## License
+## Adding a future module's permissions
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+1. Register the module and its applicable actions in `config/erp.php` → `modules`.
+2. Run `php artisan erp:sync-permissions` (creates the permissions and grants them to Admin).
+3. Add sidebar entries in `resources/js/layout/navigation.ts` with the guarding permission.

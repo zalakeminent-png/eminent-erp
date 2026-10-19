@@ -2,10 +2,11 @@
 
 namespace App\Http\Resources;
 
+use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-/** @mixin \App\Models\ActivityLog */
+/** @mixin ActivityLog */
 class ActivityLogResource extends JsonResource
 {
     public function toArray(Request $request): array

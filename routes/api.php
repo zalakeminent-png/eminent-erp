@@ -57,8 +57,9 @@ Route::prefix('v1')->group(function () {
             Route::put('{role}/permissions', 'syncPermissions')->middleware('permission:roles.assign-permissions');
         });
 
+        // Catalogue is also needed to render the (read-only) role matrix.
         Route::get('permissions', [PermissionController::class, 'index'])
-            ->middleware('permission:permissions.view|roles.assign-permissions');
+            ->middleware('permission:permissions.view|roles.view|roles.assign-permissions');
 
         Route::get('activity-logs', [ActivityLogController::class, 'index'])->middleware('permission:activity-logs.view');
     });
