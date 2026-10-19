@@ -23,7 +23,7 @@ class StructureSeeder extends Seeder
             foreach (array_values($names) as $index => $name) {
                 StructureType::firstOrCreate(
                     ['category' => $category, 'name' => $name],
-                    ['is_active' => true, 'sort_order' => ($index + 1) * 10],
+                    ['is_active' => true, 'sort_order' => $index + 1],
                 );
             }
         }

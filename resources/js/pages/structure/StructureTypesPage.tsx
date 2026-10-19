@@ -22,21 +22,23 @@ export default function StructureTypesPage() {
     const toast = useToast();
     const { data, loading, error, reload } = useApi<{ data: StructureType[] }>('/structure-types');
     const [editing, setEditing] = useState<Editing>(null);
-    const [form, setForm] = useState({ name: '', description: '', sort_order: '100', is_active: true });
+    const [form, setForm] = useState({ name: '', description: '', sort_order: '1', is_active: true });
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [saving, setSaving] = useState(false);
 
     const open = (category: Category, type: StructureType | null) => {
         setEditing({ category, type });
         setErrors({});
-        setForm(type ? { name: type.name, description: type.description ?? '', sort_order: String(type.sort_order), is_active: type.is_active } : { name: '', description: '', sort_order: '100', is_active: true });
+        // New types default to the next sequential position in their category.
+        const nextOrder = Math.max(0, ...(data?.data ?? []).filter((t) => t.category === category).map((t) => t.sort_order)) + 1;
+        setForm(type ? { name: type.name, description: type.description ?? '', sort_order: String(type.sort_order), is_active: type.is_active } : { name: '', description: '', sort_order: String(nextOrder), is_active: true });
     };
 
     const save = async (event: FormEvent) => {
         event.preventDefault();
         if (!editing || saving) return;
         setSaving(true);
-        const payload = { name: form.name.trim(), description: form.description.trim() || null, sort_order: Number(form.sort_order) || 0, is_active: form.is_active };
+        const payload = { name: form.name.trim(), description: form.description.trim() || null, sort_order: form.sort_order.trim() === '' ? null : Number(form.sort_order), is_active: form.is_active };
         try {
             if (editing.type) await api.put(`/structure-types/${editing.type.id}`, payload);
             else await api.post('/structure-types', { ...payload, category: editing.category });

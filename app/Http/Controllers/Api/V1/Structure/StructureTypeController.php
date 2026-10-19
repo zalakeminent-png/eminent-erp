@@ -44,7 +44,10 @@ class StructureTypeController extends Controller
         $type = StructureType::create([
             ...$request->validated(),
             'is_active' => $request->boolean('is_active', true),
-            'sort_order' => $request->integer('sort_order', 100),
+            // Default: next sequential position within the category.
+            'sort_order' => $request->filled('sort_order')
+                ? $request->integer('sort_order')
+                : (int) StructureType::where('category', $request->input('category'))->max('sort_order') + 1,
         ]);
 
         $this->activity->log('structure-type.created', $type, ['category' => $type->category, 'name' => $type->name], "Created {$type->category} type {$type->name}");
@@ -55,6 +58,10 @@ class StructureTypeController extends Controller
     public function update(StructureTypeRequest $request, StructureType $structureType): StructureTypeResource
     {
         $data = collect($request->validated())->except('category')->all();
+        // An empty sort order keeps the current position.
+        if (array_key_exists('sort_order', $data) && $data['sort_order'] === null) {
+            unset($data['sort_order']);
+        }
         $before = $structureType->only(array_keys($data));
         $structureType->update($data);
 
