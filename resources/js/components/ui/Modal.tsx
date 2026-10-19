@@ -4,14 +4,21 @@ import { Button } from './Button';
 
 export function Modal({ open, onClose, title, children, footer }: { open: boolean; onClose: () => void; title: string; children: ReactNode; footer?: ReactNode }) {
     const panel = useRef<HTMLDivElement>(null);
+    // Latest onClose without making the effect depend on it: callers often
+    // pass an inline arrow, which is a new function on every render.
+    const onCloseRef = useRef(onClose);
+    onCloseRef.current = onClose;
 
+    // Runs only when the dialog opens/closes — never on re-renders while
+    // typing, so focus is not pulled away from inputs inside the dialog.
     useEffect(() => {
         if (!open) return;
-        const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+        const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onCloseRef.current();
         document.addEventListener('keydown', onKey);
-        panel.current?.focus();
+        // Respect autoFocus on a field inside the dialog; otherwise focus the panel.
+        if (!panel.current?.contains(document.activeElement)) panel.current?.focus();
         return () => document.removeEventListener('keydown', onKey);
-    }, [open, onClose]);
+    }, [open]);
 
     if (!open) return null;
 
