@@ -4,7 +4,7 @@ import { useAuth } from '@/auth/AuthContext';
 import { useApi } from '@/hooks/useApi';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Alert, Badge, PageHeader } from '@/components/ui/Feedback';
-import { Checkbox, SelectInput, TextInput, Toggle } from '@/components/ui/Form';
+import { Checkbox, TextInput, Toggle } from '@/components/ui/Form';
 import { Button, ButtonLink } from '@/components/ui/Button';
 import { LoadingBlock } from '@/components/ui/Spinner';
 import { useToast } from '@/components/ui/Toast';
@@ -119,9 +119,9 @@ export default function UserFormPage() {
                         <TextInput label="Email" type="email" value={form.email} onChange={set('email')} error={errors.email} required autoComplete="off" />
                         <TextInput label="Mobile number" type="tel" value={form.mobile} onChange={set('mobile')} error={errors.mobile} placeholder="+91 98765 43210" />
                         <TextInput label="Employee code" value={form.employee_code} onChange={set('employee_code')} error={errors.employee_code} hint="Optional. Must be unique." />
-                        <SelectInput label="Department" disabled value="" hint="Departments are introduced in Module 2.">
-                            <option value="">Not assigned</option>
-                        </SelectInput>
+                        <p className="self-end pb-2 text-xs text-slate-500">
+                            Factory and department assignment is managed on the user details page after saving.
+                        </p>
                         {!isEdit && (
                             <div className="sm:col-span-2">
                                 <Toggle label="Active account" description="Inactive users cannot sign in." checked={form.is_active} onChange={(v) => setForm((f) => ({ ...f, is_active: v }))} />

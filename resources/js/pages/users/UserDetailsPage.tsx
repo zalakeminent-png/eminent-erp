@@ -9,6 +9,7 @@ import { LoadingBlock } from '@/components/ui/Spinner';
 import { formatDateTime, initials } from '@/lib/format';
 import { ActivityFeed } from '@/pages/activity/ActivityFeed';
 import type { ActivityLog, Paginated, User } from '@/types';
+import { UserAssignmentsCard } from './UserAssignmentsCard';
 import { useUserActions } from './useUserActions';
 
 export default function UserDetailsPage() {
@@ -68,7 +69,6 @@ export default function UserDetailsPage() {
                                 { label: 'Last name', value: user.last_name },
                                 { label: 'Email', value: user.email },
                                 { label: 'Mobile', value: user.mobile ?? '—' },
-                                { label: 'Department', value: <span className="text-slate-400">Available in Module 2</span> },
                                 { label: 'Last login', value: formatDateTime(user.last_login_at, 'Never') },
                                 { label: 'Created', value: formatDateTime(user.created_at) },
                                 { label: 'Last updated', value: formatDateTime(user.updated_at) },
@@ -97,6 +97,10 @@ export default function UserDetailsPage() {
                         )}
                     </CardBody>
                 </Card>
+            </div>
+
+            <div className="mt-6">
+                <UserAssignmentsCard userId={user.id} />
             </div>
 
             {can('activity-logs.view') && (

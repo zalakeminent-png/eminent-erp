@@ -4,7 +4,8 @@ Manufacturing ERP built with Laravel 12 (REST API), React 18 + TypeScript (SPA),
 Sanctum cookie authentication and Spatie Laravel Permission.
 
 **Implemented:** Module 1 — System Settings & User Management (authentication, company settings,
-users, roles, permission matrix, activity logs). Later modules (Inventory, Orders, Production,
+users, roles, permission matrix, activity logs) and Module 2 — Factory & Department Management.
+Later modules (Inventory, Orders, Production,
 QC, Dispatch, Accounting, HR) have reserved permission namespaces only.
 
 ## Architecture
@@ -75,6 +76,34 @@ php artisan test   # backend feature tests (SQLite in-memory)
 npm test           # frontend (Vitest + Testing Library)
 npm run typecheck
 ```
+
+## Module 2 — Factory & Department Management
+
+Factories (per company) → departments and warehouses (per factory) → nested storage locations
+(per warehouse). Configuration only: no stock, receipts or movements.
+
+- **Data scope:** permissions decide *what* a user may do; assignments decide *where*. Users with
+  `factories.access-all` see every factory (Admin has it). Everyone else sees only their primary
+  factory plus the factories of their primary/additional departments
+  (`app/Services/Structure/StructureScope.php`). Out-of-scope records return 404.
+- **Assignments:** `users.factory_id` (primary factory), `users.department_id` (primary department),
+  `department_user` (additional departments). Managed via `PUT /users/{id}/assignments` or
+  `PUT /departments/{id}/users`.
+- **Status:** deactivation needs `{module}.deactivate`, reactivation `{module}.update`. Inactive
+  records cannot receive new assignments or be selected; nothing cascades.
+- **Locations:** cycle, same-warehouse and depth checks (`ERP_MAX_LOCATION_DEPTH`, default 6).
+  Future modules should select locations with `WarehouseLocation::selectable()` and register their
+  referencing tables in `config/erp.php` → `structure.location_references` so referenced locations
+  cannot be deleted.
+
+Setup on an existing Module 1 install:
+
+```bash
+php artisan migrate
+php artisan db:seed --class=StructureSeeder   # new permissions (Admin only) + suggested types
+```
+
+No other role receives the new permissions automatically — grant them in Roles & Permissions.
 
 ## Adding a future module's permissions
 

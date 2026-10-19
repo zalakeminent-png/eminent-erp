@@ -1,4 +1,7 @@
-import { Building2, History, LayoutDashboard, Settings, ShieldCheck, Users, type LucideIcon } from 'lucide-react';
+import {
+    Building, Building2, Factory, History, LayoutDashboard, ListTree, MapPin, Network, Settings, ShieldCheck, Tags, Users, Warehouse,
+    type LucideIcon,
+} from 'lucide-react';
 
 export interface NavLinkItem {
     label: string;
@@ -23,6 +26,18 @@ export type NavItem = NavLinkItem | NavGroup;
  */
 export const navigation: NavItem[] = [
     { label: 'Dashboard', to: '/', icon: LayoutDashboard, permission: 'dashboard.view', end: true },
+    {
+        label: 'Factory Setup',
+        icon: ListTree,
+        children: [
+            { label: 'Structure Overview', to: '/factory-setup/structure', icon: Network, permission: 'factory-structure.view' },
+            { label: 'Factories', to: '/factory-setup/factories', icon: Factory, permission: 'factories.view' },
+            { label: 'Departments', to: '/factory-setup/departments', icon: Building, permission: 'departments.view' },
+            { label: 'Warehouses', to: '/factory-setup/warehouses', icon: Warehouse, permission: 'warehouses.view' },
+            { label: 'Storage Locations', to: '/factory-setup/locations', icon: MapPin, permission: 'locations.view' },
+            { label: 'Types', to: '/factory-setup/types', icon: Tags, permission: 'structure-types.view' },
+        ],
+    },
     {
         label: 'System Settings',
         icon: Settings,

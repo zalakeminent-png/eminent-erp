@@ -75,7 +75,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                     ),
                 )}
             </nav>
-            <div className="border-t border-slate-200 px-5 py-3 text-xs text-slate-400">Module 1 · System Settings</div>
+            <div className="border-t border-slate-200 px-5 py-3 text-xs text-slate-400">Factory Manufacturing ERP</div>
         </div>
     );
 

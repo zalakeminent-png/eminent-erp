@@ -13,6 +13,10 @@ export interface User {
     email: string;
     mobile: string | null;
     department_id: number | null;
+    factory_id?: number | null;
+    factory?: { id: number; code: string; name: string } | null;
+    department?: { id: number; code: string; name: string; factory_id: number } | null;
+    additional_departments?: { id: number; code: string; name: string; factory_id: number }[];
     is_active: boolean;
     last_login_at: string | null;
     deactivated_at: string | null;
