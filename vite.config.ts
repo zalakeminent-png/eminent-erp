@@ -18,6 +18,14 @@ export default defineConfig({
             '@': fileURLToPath(new URL('./resources/js', import.meta.url)),
         },
     },
+    build: {
+        rollupOptions: {
+            output: {
+                // Long-lived vendor chunk; app code changes don't invalidate it.
+                manualChunks: { vendor: ['react', 'react-dom', 'react-router-dom', 'axios', 'lucide-react'] },
+            },
+        },
+    },
     server: {
         watch: {
             ignored: ['**/storage/framework/views/**'],

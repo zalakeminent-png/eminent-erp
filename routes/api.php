@@ -84,7 +84,7 @@ Route::prefix('v1')->group(function () {
         });
 
         Route::controller(DepartmentController::class)->prefix('departments')->group(function () {
-            Route::get('/', 'index')->middleware('permission:departments.view|warehouses.create|warehouses.update|departments.assign-users');
+            Route::get('/', 'index')->middleware('permission:departments.view|warehouses.create|warehouses.update|departments.assign-users|machines.create|machines.update|processes.create|processes.update|routings.create|routings.update');
             Route::post('/', 'store')->middleware('permission:departments.create');
             Route::get('{department}', 'show')->middleware('permission:departments.view');
             Route::put('{department}', 'update')->middleware('permission:departments.update');

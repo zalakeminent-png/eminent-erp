@@ -1,5 +1,6 @@
 import {
-    Building, Building2, Factory, History, LayoutDashboard, ListTree, MapPin, Network, Settings, ShieldCheck, Tags, Users, Warehouse,
+    Boxes, Building, Building2, ClipboardCheck, ClipboardList, Cog, Database, Factory, FileSpreadsheet, FolderTree, GitBranch, Gauge, History,
+    LayoutDashboard, Layers, ListTree, MapPin, Network, Ruler, Settings, ShieldCheck, Tags, Users, Warehouse, Workflow, Wrench,
     type LucideIcon,
 } from 'lucide-react';
 
@@ -26,6 +27,25 @@ export type NavItem = NavLinkItem | NavGroup;
  */
 export const navigation: NavItem[] = [
     { label: 'Dashboard', to: '/', icon: LayoutDashboard, permission: 'dashboard.view', end: true },
+    {
+        label: 'Master Data',
+        icon: Database,
+        children: [
+            { label: 'Dashboard', to: '/master-data', icon: Gauge, permission: 'master-data.view', end: true },
+            { label: 'Item Categories', to: '/master-data/categories', icon: FolderTree, permission: 'item-categories.view' },
+            { label: 'Items / Products', to: '/master-data/items', icon: Boxes, permission: 'items.view' },
+            { label: 'Units of Measurement', to: '/master-data/uoms', icon: Ruler, permission: 'uoms.view' },
+            { label: 'Material Grades', to: '/master-data/material-grades', icon: Layers, permission: 'material-grades.view' },
+            { label: 'Manufacturing Processes', to: '/master-data/processes', icon: Cog, permission: 'processes.view' },
+            { label: 'Machines & Workstations', to: '/master-data/machines', icon: Wrench, permission: 'machines.view' },
+            { label: 'Bill of Materials', to: '/master-data/boms', icon: GitBranch, permission: 'boms.view' },
+            { label: 'Product Routings', to: '/master-data/routings', icon: Workflow, permission: 'routings.view' },
+            { label: 'QC Specifications', to: '/master-data/qc-specifications', icon: ClipboardCheck, permission: 'qc-specifications.view' },
+            { label: 'QC Parameters', to: '/master-data/qc-parameters', icon: ClipboardList, permission: 'qc-specifications.view' },
+            { label: 'Customers & Suppliers', to: '/master-data/partners', icon: Users, permission: 'business-partners.view' },
+            { label: 'Excel Import', to: '/master-data/import', icon: FileSpreadsheet, permission: 'master-data.import' },
+        ],
+    },
     {
         label: 'Factory Setup',
         icon: ListTree,

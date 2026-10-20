@@ -105,6 +105,41 @@ php artisan db:seed --class=StructureSeeder   # new permissions (Admin only) + s
 
 No other role receives the new permissions automatically — grant them in Roles & Permissions.
 
+## Module 3 — Master Data Management
+
+Item categories (hierarchical) and configurable attributes, item/product master, units of measure
+and conversions, material families/grades, manufacturing processes, machines & workstations,
+BOMs, product routings, QC parameters/specifications, customers & suppliers, and Excel import.
+
+- **Units:** each UOM has a dimension. Universal conversions only within convertible dimensions
+  (mass, length, area, volume, time); PCS/BOX/SET convert only through item-specific conversions
+  (e.g. 1 BOX = 100 PCS). Arithmetic is exact (bcmath); a conversion that would need more decimals
+  than the target unit allows is refused instead of rounded. Future transactions should store the
+  entered qty + UOM + factor and the base-UOM qty (`App\Services\MasterData\UomConverter`).
+- **Versioned documents** (BOM, routing, QC spec): draft → approved (immutable) → inactive. Changes
+  to an approved version go through "revise" (new draft version). Only one approved version per
+  item may be effective on a date. Circular BOMs are rejected; approval never moves stock.
+- **Items:** specification changes bump the item revision (history in `item_revisions`). Once an
+  item is referenced by approved documents (or by tables listed in
+  `config/erp.php` → `master_data.item_references`), its code, base UOM and type are locked.
+  SKUs: `ERP_SKU_MODE` = `optional` (generate when blank, default) | `auto` | `manual`;
+  pattern `ERP_SKU_PATTERN` (default `{category}-{grade}-{seq}` → `RM-SS316-001`).
+- **Import:** upload `.xlsx`/`.csv` → map columns → validate & preview → confirm. Existing records
+  change only with "update existing" enabled *and* confirmed. Imports above
+  `ERP_IMPORT_QUEUE_THRESHOLD` rows (default 500) run on the queue — run `php artisan queue:work`.
+- **Attachments** are stored on the private `local` disk and downloaded through
+  `/api/v1/documents/{id}/download` (permission-checked).
+
+Setup on an existing install (idempotent; recommended role permissions are granted once and
+never re-applied, so permission-matrix changes survive re-seeding):
+
+```bash
+composer install            # adds openspout/openspout
+php artisan migrate
+php artisan db:seed --class=MasterDataSeeder
+npm install && npm run build
+```
+
 ## Adding a future module's permissions
 
 1. Register the module and its applicable actions in `config/erp.php` → `modules`.
