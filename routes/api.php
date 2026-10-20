@@ -129,5 +129,8 @@ Route::prefix('v1')->group(function () {
 
         Route::get('lookups/users', [LookupController::class, 'users'])
             ->middleware('permission:departments.assign-managers|departments.assign-users|departments.create|warehouses.create|warehouses.update');
+
+        // ---- Module 3: Master Data Management -------------------------
+        require __DIR__.'/master-data.php';
     });
 });
