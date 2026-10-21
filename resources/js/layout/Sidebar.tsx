@@ -32,12 +32,13 @@ function SidebarLink({ item, onNavigate, nested = false }: { item: NavLinkItem; 
 
 /**
  * A main menu with its submenu. Clicking the heading opens / closes the
- * submenu; the menu containing the current page opens automatically.
+ * submenu. Menus start open so every module is visible; a closed menu
+ * reopens automatically when one of its pages becomes active.
  */
 function SidebarGroup({ item, onNavigate }: { item: NavGroup; onNavigate?: () => void }) {
     const { pathname } = useLocation();
     const containsActive = item.children.some((child) => matchPath({ path: child.to, end: child.end ?? false }, pathname) !== null);
-    const [open, setOpen] = useState(containsActive);
+    const [open, setOpen] = useState(true);
     const submenuId = useId();
 
     useEffect(() => {

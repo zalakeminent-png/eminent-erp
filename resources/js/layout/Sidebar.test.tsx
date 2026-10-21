@@ -39,37 +39,33 @@ describe('sidebar navigation', () => {
         expect(screen.queryAllByText('System Settings')).toHaveLength(0);
     });
 
-    it('opens and closes a main menu submenu on click', async () => {
-        renderWithAuth(<Sidebar open={false} onClose={() => undefined} />, { user: makeUser(['dashboard.view', 'users.view', 'roles.view']) });
+    it('shows every module open by default and closes / reopens a submenu on click', async () => {
+        renderWithAuth(<Sidebar open={false} onClose={() => undefined} />, { user: makeUser(['dashboard.view', 'items.view', 'inventory.stock.view', 'users.view']) });
         const nav = screen.getAllByRole('navigation', { name: 'Main navigation' })[0];
+
+        // Nothing is hidden: Master Data, Inventory and System Settings links are all visible.
+        expect(within(nav).getByRole('link', { name: 'Items / Products' })).toBeInTheDocument();
+        expect(within(nav).getByRole('link', { name: 'Stock Overview' })).toBeInTheDocument();
         const toggle = within(nav).getByRole('button', { name: /System Settings/ });
-
-        expect(toggle).toHaveAttribute('aria-expanded', 'false');
-        expect(within(nav).queryByRole('link', { name: 'Users' })).not.toBeInTheDocument();
-
-        await userEvent.click(toggle);
         expect(toggle).toHaveAttribute('aria-expanded', 'true');
         expect(within(nav).getByRole('link', { name: 'Users' })).toHaveAttribute('href', '/settings/users');
 
         await userEvent.click(toggle);
         expect(toggle).toHaveAttribute('aria-expanded', 'false');
         expect(within(nav).queryByRole('link', { name: 'Users' })).not.toBeInTheDocument();
+        expect(within(nav).getByRole('link', { name: 'Items / Products' })).toBeInTheDocument(); // other menus unaffected
+
+        await userEvent.click(toggle);
+        expect(toggle).toHaveAttribute('aria-expanded', 'true');
+        expect(within(nav).getByRole('link', { name: 'Users' })).toBeInTheDocument();
     });
 
-    it('keeps the menu of the current page open and toggles each menu independently', async () => {
-        renderWithAuth(<Sidebar open={false} onClose={() => undefined} />, {
-            user: makeUser(['users.view', 'items.view', 'inventory.stock.view']), route: '/settings/users/5',
-        });
+    it('keeps the active menu item highlighted', () => {
+        renderWithAuth(<Sidebar open={false} onClose={() => undefined} />, { user: makeUser(['users.view', 'items.view']), route: '/settings/users/5' });
         const nav = screen.getAllByRole('navigation', { name: 'Main navigation' })[0];
 
         expect(within(nav).getByRole('button', { name: /System Settings/ })).toHaveAttribute('aria-expanded', 'true');
-        expect(within(nav).getByRole('link', { name: 'Users' })).toHaveClass('bg-brand-50'); // active state preserved
-        expect(within(nav).getByRole('button', { name: /Master Data/ })).toHaveAttribute('aria-expanded', 'false');
-
-        await userEvent.click(within(nav).getByRole('button', { name: /Inventory/ }));
-        expect(within(nav).getByRole('link', { name: 'Stock Overview' })).toBeInTheDocument();
-        expect(within(nav).getByRole('link', { name: 'Users' })).toBeInTheDocument();
-        expect(within(nav).queryByRole('link', { name: 'Items / Products' })).not.toBeInTheDocument();
+        expect(within(nav).getByRole('link', { name: 'Users' })).toHaveClass('bg-brand-50');
     });
 
     it('filterNavigation keeps only permitted entries', () => {
