@@ -16,8 +16,6 @@ class DatabaseSeeder extends Seeder
             CompanySeeder::class,
             RolesAndPermissionsSeeder::class,
             StructureSeeder::class,
-            MasterDataSeeder::class,
-            InventorySeeder::class,
         ]);
     }
 }

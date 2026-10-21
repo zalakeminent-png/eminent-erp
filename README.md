@@ -5,7 +5,7 @@ Sanctum cookie authentication and Spatie Laravel Permission.
 
 **Implemented:** Module 1 — System Settings & User Management (authentication, company settings,
 users, roles, permission matrix, activity logs) and Module 2 — Factory & Department Management.
-Later modules (Inventory, Orders, Production,
+Later modules (Orders, Production,
 QC, Dispatch, Accounting, HR) have reserved permission namespaces only.
 
 ## Architecture
@@ -65,8 +65,6 @@ Open http://localhost:8000 and sign in with the administrator account.
 | `ACTIVITY_LOG_RETENTION_DAYS` | Empty = keep forever; otherwise pruned daily |
 | `ERP_COMPANY_NAME`, `ERP_COMPANY_CODE` | Initial company created by the seeder |
 | `ERP_LOGO_MAX_KB` | Logo upload limit (default 2048) |
-| `ERP_OPENING_STOCK_MAX_ROWS` | Maximum rows per opening stock file (default 20000) |
-| `ERP_OPENING_STOCK_QUEUE_THRESHOLD` | Opening stock posts above this many rows run on the queue (default 2000) |
 
 Mail must be configured (`MAIL_*`) for invitations and password resets. With `MAIL_MAILER=log`,
 emails are written to `storage/logs/laravel.log`.
@@ -107,41 +105,6 @@ php artisan db:seed --class=StructureSeeder   # new permissions (Admin only) + s
 
 No other role receives the new permissions automatically — grant them in Roles & Permissions.
 
-## Module 3 — Master Data Management
-
-Item categories (hierarchical) and configurable attributes, item/product master, units of measure
-and conversions, material families/grades, manufacturing processes, machines & workstations,
-BOMs, product routings, QC parameters/specifications, customers & suppliers, and Excel import.
-
-- **Units:** each UOM has a dimension. Universal conversions only within convertible dimensions
-  (mass, length, area, volume, time); PCS/BOX/SET convert only through item-specific conversions
-  (e.g. 1 BOX = 100 PCS). Arithmetic is exact (bcmath); a conversion that would need more decimals
-  than the target unit allows is refused instead of rounded. Future transactions should store the
-  entered qty + UOM + factor and the base-UOM qty (`App\Services\MasterData\UomConverter`).
-- **Versioned documents** (BOM, routing, QC spec): draft → approved (immutable) → inactive. Changes
-  to an approved version go through "revise" (new draft version). Only one approved version per
-  item may be effective on a date. Circular BOMs are rejected; approval never moves stock.
-- **Items:** specification changes bump the item revision (history in `item_revisions`). Once an
-  item is referenced by approved documents (or by tables listed in
-  `config/erp.php` → `master_data.item_references`), its code, base UOM and type are locked.
-  SKUs: `ERP_SKU_MODE` = `optional` (generate when blank, default) | `auto` | `manual`;
-  pattern `ERP_SKU_PATTERN` (default `{category}-{grade}-{seq}` → `RM-SS316-001`).
-- **Import:** upload `.xlsx`/`.csv` → map columns → validate & preview → confirm. Existing records
-  change only with "update existing" enabled *and* confirmed. Imports above
-  `ERP_IMPORT_QUEUE_THRESHOLD` rows (default 500) run on the queue — run `php artisan queue:work`.
-- **Attachments** are stored on the private `local` disk and downloaded through
-  `/api/v1/documents/{id}/download` (permission-checked).
-
-Setup on an existing install (idempotent; recommended role permissions are granted once and
-never re-applied, so permission-matrix changes survive re-seeding):
-
-```bash
-composer install            # adds openspout/openspout
-php artisan migrate
-php artisan db:seed --class=MasterDataSeeder
-npm install && npm run build
-```
-
 ## Warehouses are internal
 
 All storage is inside the company, so warehouses are not managed in the UI. Each factory has one
@@ -151,42 +114,12 @@ internal storage area (its existing warehouse, or `MAIN`, created automatically 
 warehouse used to be required. The `warehouses` table, API and permissions remain for data
 integrity but are hidden (the Warehouses module is marked `hidden` in `config/erp.php`).
 
-## Module 4 — Inventory & Warehouse Management
+## Removed modules
 
-Stock ledger, opening stock (Excel), goods receipts, transfers, material issue/return, WIP and
-finished-goods views, QC stock dispositions, scrap & rejection, reservations, adjustments,
-physical counting, ledger, dashboard and 18 reports.
-
-- **One writer:** every stock change goes through `App\Services\Inventory\StockPostingService`.
-  It writes signed, immutable ledger entries (`inventory_ledger_entries`, base UOM) and updates
-  the cached `inventory_balances` (item + location + status) in the same DB transaction, under
-  row locks taken in a fixed order. UPDATE/DELETE on the ledger tables is refused by database
-  triggers. Corrections are compensating entries (adjustments, reversals), never edits.
-- **Idempotent:** each posting has a unique idempotency key (e.g. `grn:15:post`); repeating a
-  request returns the original transaction. Partial transfer receipts carry a client request key.
-- **Rules:** no negative stock (except items flagged `allow_negative_stock`, and only for
-  available stock); available stock never drops below active reservations; locations in a
-  running stock count are locked; new stock only enters active locations. QC items are received
-  into *QC Pending*; damaged returns go to *QC Hold*. Rejected/scrap/QC stock is never reservable.
-- **Values** use moving-average cost only where real costs exist; stock received without a cost
-  has unknown value and is reported as "not valued" (never estimated). Quantities of different
-  units are never added together.
-- **Stock purpose:** warehouses/locations have an optional `stock_purpose` (Inventory Settings);
-  a location inherits its warehouse's purpose. Material issues must go to Production / WIP.
-- **Opening stock:** template → upload → map → validate & preview → submit → approve → post.
-  Refused for any item/location/status that already has stock history. Imports above
-  `ERP_OPENING_STOCK_QUEUE_THRESHOLD` accepted rows (default 2000) post on the queue.
-- **Maintenance:** `php artisan inventory:verify-balances` (read-only check that balances equal
-  the ledger) and `inventory:expire-reservations` (scheduled daily; needs `schedule:run`).
-
-Setup on an existing install (additive; take a database backup first):
-
-```bash
-pg_dump -U postgres -Fc -f eminent_erp_before_module4.dump eminent_erp
-php artisan migrate
-php artisan db:seed --class=InventorySeeder   # permissions, reason codes, one-time role grants
-npm install && npm run build
-```
+The Master Data (Module 3) and Inventory (Module 4) modules were removed from the application
+(screens, APIs, permissions in the matrix). Their database tables and saved records are kept
+unchanged; user and department deletion still respect those records. The code can be restored
+from git history if needed.
 
 ## Adding a future module's permissions
 

@@ -17,18 +17,6 @@ import RoleDetailsPage from '@/pages/roles/RoleDetailsPage';
 import RolePermissionsPage from '@/pages/roles/RolePermissionsPage';
 import ActivityLogPage from '@/pages/activity/ActivityLogPage';
 import NotFoundPage from '@/pages/NotFoundPage';
-import { inventoryRoutes } from '@/pages/inventory/InventoryRoutes';
-import MasterDataDashboardPage from '@/pages/master-data/MasterDataDashboardPage';
-import ItemCategoriesPage from '@/pages/master-data/ItemCategoriesPage';
-import ItemListPage from '@/pages/master-data/items/ItemListPage';
-import ItemFormPage from '@/pages/master-data/items/ItemFormPage';
-import ItemDetailsPage from '@/pages/master-data/items/ItemDetailsPage';
-import { MachinesPage, MaterialGradesPage, ProcessesPage, QcParametersPage, UomsPage } from '@/pages/master-data/SimpleMasters';
-import { BomDetailsPage, BomEditorPage, BomListPage } from '@/pages/master-data/documents/BomPages';
-import { RoutingDetailsPage, RoutingEditorPage, RoutingListPage } from '@/pages/master-data/documents/RoutingPages';
-import { QcDetailsPage, QcEditorPage, QcListPage } from '@/pages/master-data/documents/QcPages';
-import { BusinessPartnerDetailsPage, BusinessPartnerFormPage, BusinessPartnerListPage } from '@/pages/master-data/BusinessPartnerPages';
-import ImportPage from '@/pages/master-data/ImportPage';
 import FactoryStructurePage from '@/pages/structure/FactoryStructurePage';
 import StructureTypesPage from '@/pages/structure/StructureTypesPage';
 import FactoryListPage from '@/pages/structure/factories/FactoryListPage';
@@ -80,49 +68,6 @@ export default function App() {
 
                         <Route path="activity-logs" element={<RequirePermission permission="activity-logs.view"><ActivityLogPage /></RequirePermission>} />
                     </Route>
-
-                    <Route path="master-data">
-                        <Route index element={<RequirePermission permission="master-data.view"><MasterDataDashboardPage /></RequirePermission>} />
-                        <Route path="categories" element={<RequirePermission permission="item-categories.view"><ItemCategoriesPage /></RequirePermission>} />
-                        <Route path="items">
-                            <Route index element={<RequirePermission permission="items.view"><ItemListPage /></RequirePermission>} />
-                            <Route path="new" element={<RequirePermission permission="items.create"><ItemFormPage /></RequirePermission>} />
-                            <Route path=":id" element={<RequirePermission permission="items.view"><ItemDetailsPage /></RequirePermission>} />
-                            <Route path=":id/edit" element={<RequirePermission permission="items.update"><ItemFormPage /></RequirePermission>} />
-                        </Route>
-                        <Route path="uoms" element={<RequirePermission permission="uoms.view"><UomsPage /></RequirePermission>} />
-                        <Route path="material-grades" element={<RequirePermission permission="material-grades.view"><MaterialGradesPage /></RequirePermission>} />
-                        <Route path="processes" element={<RequirePermission permission="processes.view"><ProcessesPage /></RequirePermission>} />
-                        <Route path="machines" element={<RequirePermission permission="machines.view"><MachinesPage /></RequirePermission>} />
-                        <Route path="qc-parameters" element={<RequirePermission permission="qc-specifications.view"><QcParametersPage /></RequirePermission>} />
-                        <Route path="boms">
-                            <Route index element={<RequirePermission permission="boms.view"><BomListPage /></RequirePermission>} />
-                            <Route path="new" element={<RequirePermission permission="boms.create"><BomEditorPage /></RequirePermission>} />
-                            <Route path=":id" element={<RequirePermission permission="boms.view"><BomDetailsPage /></RequirePermission>} />
-                            <Route path=":id/edit" element={<RequirePermission permission="boms.update"><BomEditorPage /></RequirePermission>} />
-                        </Route>
-                        <Route path="routings">
-                            <Route index element={<RequirePermission permission="routings.view"><RoutingListPage /></RequirePermission>} />
-                            <Route path="new" element={<RequirePermission permission="routings.create"><RoutingEditorPage /></RequirePermission>} />
-                            <Route path=":id" element={<RequirePermission permission="routings.view"><RoutingDetailsPage /></RequirePermission>} />
-                            <Route path=":id/edit" element={<RequirePermission permission="routings.update"><RoutingEditorPage /></RequirePermission>} />
-                        </Route>
-                        <Route path="qc-specifications">
-                            <Route index element={<RequirePermission permission="qc-specifications.view"><QcListPage /></RequirePermission>} />
-                            <Route path="new" element={<RequirePermission permission="qc-specifications.create"><QcEditorPage /></RequirePermission>} />
-                            <Route path=":id" element={<RequirePermission permission="qc-specifications.view"><QcDetailsPage /></RequirePermission>} />
-                            <Route path=":id/edit" element={<RequirePermission permission="qc-specifications.update"><QcEditorPage /></RequirePermission>} />
-                        </Route>
-                        <Route path="partners">
-                            <Route index element={<RequirePermission permission="business-partners.view"><BusinessPartnerListPage /></RequirePermission>} />
-                            <Route path="new" element={<RequirePermission permission="business-partners.create"><BusinessPartnerFormPage /></RequirePermission>} />
-                            <Route path=":id" element={<RequirePermission permission="business-partners.view"><BusinessPartnerDetailsPage /></RequirePermission>} />
-                            <Route path=":id/edit" element={<RequirePermission permission="business-partners.update"><BusinessPartnerFormPage /></RequirePermission>} />
-                        </Route>
-                        <Route path="import" element={<RequirePermission permission="master-data.import"><ImportPage /></RequirePermission>} />
-                    </Route>
-
-                    {inventoryRoutes()}
 
                     <Route path="factory-setup">
                         <Route path="structure" element={<RequirePermission permission="factory-structure.view"><FactoryStructurePage /></RequirePermission>} />

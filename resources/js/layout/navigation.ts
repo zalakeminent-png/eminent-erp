@@ -1,9 +1,4 @@
-import {
-    ArrowLeftRight, BookOpen, Boxes, Building, Building2, ClipboardCheck, ClipboardList, Cog, Database, Factory, FileBarChart, FileSpreadsheet,
-    FolderTree, GitBranch, Gauge, History, LayoutDashboard, Layers, ListTree, Lock, MapPin, Network, Package, PackageCheck, PackageMinus,
-    PackageOpen, Ruler, Settings, ShieldCheck, SlidersHorizontal, Tags, Trash2, Undo2, Users, Workflow, Wrench,
-    type LucideIcon,
-} from 'lucide-react';
+import { Building, Building2, Factory, History, LayoutDashboard, ListTree, MapPin, Network, Settings, ShieldCheck, Tags, Users, type LucideIcon } from 'lucide-react';
 
 export interface NavLinkItem {
     label: string;
@@ -28,48 +23,6 @@ export type NavItem = NavLinkItem | NavGroup;
  */
 export const navigation: NavItem[] = [
     { label: 'Dashboard', to: '/', icon: LayoutDashboard, permission: 'dashboard.view', end: true },
-    {
-        label: 'Master Data',
-        icon: Database,
-        children: [
-            { label: 'Dashboard', to: '/master-data', icon: Gauge, permission: 'master-data.view', end: true },
-            { label: 'Item Categories', to: '/master-data/categories', icon: FolderTree, permission: 'item-categories.view' },
-            { label: 'Items / Products', to: '/master-data/items', icon: Boxes, permission: 'items.view' },
-            { label: 'Units of Measurement', to: '/master-data/uoms', icon: Ruler, permission: 'uoms.view' },
-            { label: 'Material Grades', to: '/master-data/material-grades', icon: Layers, permission: 'material-grades.view' },
-            { label: 'Manufacturing Processes', to: '/master-data/processes', icon: Cog, permission: 'processes.view' },
-            { label: 'Machines & Workstations', to: '/master-data/machines', icon: Wrench, permission: 'machines.view' },
-            { label: 'Bill of Materials', to: '/master-data/boms', icon: GitBranch, permission: 'boms.view' },
-            { label: 'Product Routings', to: '/master-data/routings', icon: Workflow, permission: 'routings.view' },
-            { label: 'QC Specifications', to: '/master-data/qc-specifications', icon: ClipboardCheck, permission: 'qc-specifications.view' },
-            { label: 'QC Parameters', to: '/master-data/qc-parameters', icon: ClipboardList, permission: 'qc-specifications.view' },
-            { label: 'Customers & Suppliers', to: '/master-data/partners', icon: Users, permission: 'business-partners.view' },
-            { label: 'Excel Import', to: '/master-data/import', icon: FileSpreadsheet, permission: 'master-data.import' },
-        ],
-    },
-    {
-        label: 'Inventory',
-        icon: Package,
-        children: [
-            { label: 'Dashboard', to: '/inventory', icon: Gauge, permission: 'inventory.dashboard.view', end: true },
-            { label: 'Stock Overview', to: '/inventory/stock', icon: Boxes, permission: 'inventory.stock.view' },
-            { label: 'Opening Stock', to: '/inventory/opening-stock', icon: FileSpreadsheet, permission: 'inventory.opening-stock.view' },
-            { label: 'Goods Receipts', to: '/inventory/goods-receipts', icon: PackageCheck, permission: 'inventory.grn.view' },
-            { label: 'Stock Transfers', to: '/inventory/transfers', icon: ArrowLeftRight, permission: 'inventory.transfers.view' },
-            { label: 'Material Issue', to: '/inventory/material-issues', icon: PackageMinus, permission: 'inventory.material-issues.view' },
-            { label: 'Material Return', to: '/inventory/material-returns', icon: Undo2, permission: 'inventory.returns.view' },
-            { label: 'WIP Inventory', to: '/inventory/wip', icon: Factory, permission: 'inventory.wip.view' },
-            { label: 'Finished Goods', to: '/inventory/finished-goods', icon: PackageOpen, permission: 'inventory.finished-goods.view' },
-            { label: 'QC Stock', to: '/inventory/qc-stock', icon: ShieldCheck, permission: 'inventory.qc-disposition.view' },
-            { label: 'Scrap & Rejection', to: '/inventory/scrap', icon: Trash2, permission: 'inventory.scrap.view' },
-            { label: 'Stock Reservation', to: '/inventory/reservations', icon: Lock, permission: 'inventory.reservations.view' },
-            { label: 'Stock Adjustment', to: '/inventory/adjustments', icon: SlidersHorizontal, permission: 'inventory.adjustments.view' },
-            { label: 'Stock Counting', to: '/inventory/stock-counts', icon: ClipboardList, permission: 'inventory.counts.view' },
-            { label: 'Stock Ledger', to: '/inventory/ledger', icon: BookOpen, permission: 'inventory.ledger.view' },
-            { label: 'Reports', to: '/inventory/reports', icon: FileBarChart, permission: 'inventory.reports.view' },
-            { label: 'Inventory Settings', to: '/inventory/settings', icon: Settings, permission: 'inventory.settings.manage' },
-        ],
-    },
     {
         label: 'Factory Setup',
         icon: ListTree,

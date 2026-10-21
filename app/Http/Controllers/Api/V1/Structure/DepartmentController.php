@@ -143,14 +143,14 @@ class DepartmentController extends Controller
 
         $blockers = array_values(array_filter([
             $employees ? "{$employees} employee assignment(s) (Departments → Employees)" : null,
-            $machines->isNotEmpty() ? "machine(s) {$names($machines)} (Master Data → Machines & Workstations)" : null,
-            $processes->isNotEmpty() ? "default department of process(es) {$names($processes)} (Master Data → Manufacturing Processes)" : null,
-            $routings->isNotEmpty() ? "operations in routing(s) {$names($routings)} (Master Data → Product Routings)" : null,
+            $machines->isNotEmpty() ? "machine(s) {$names($machines)}" : null,
+            $processes->isNotEmpty() ? "process(es) {$names($processes)}" : null,
+            $routings->isNotEmpty() ? "routing(s) {$names($routings)}" : null,
             $documents->isNotEmpty() ? "stock document(s) {$names($documents)}" : null,
         ]));
         if ($blockers) {
             return response()->json([
-                'message' => "{$department->name} cannot be deleted because it is still used by: ".implode('; ', $blockers).'. Change these to another department first, or deactivate the department instead.',
+                'message' => "{$department->name} cannot be deleted because it is still used by: ".implode('; ', $blockers).($employees && count($blockers) === 1 ? '. Reassign the employees first, or deactivate the department instead.' : '. These saved records are kept, so deactivate the department instead.'),
             ], 409);
         }
 

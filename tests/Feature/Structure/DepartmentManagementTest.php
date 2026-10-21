@@ -7,6 +7,7 @@ use App\Models\MasterData\Machine;
 use App\Models\Role;
 use App\Models\StructureType;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 class DepartmentManagementTest extends StructureTestCase
 {
@@ -298,11 +299,12 @@ class DepartmentManagementTest extends StructureTestCase
     {
         $factory = $this->makeFactory();
         $department = $this->makeDepartment($factory, ['name' => 'Quality Control']);
-        Machine::create(['factory_id' => $factory->id, 'department_id' => $department->id, 'code' => 'CMM-1', 'name' => 'CMM', 'is_active' => true]);
+        // Saved machine records (Master Data module removed, data kept) still refer to it.
+        DB::table('machines')->insert(['factory_id' => $factory->id, 'department_id' => $department->id, 'code' => 'CMM-1', 'name' => 'CMM', 'is_active' => true, 'created_at' => now(), 'updated_at' => now()]);
 
         $this->actingAs($this->admin)->deleteJson($this->api("departments/{$department->id}"))
             ->assertStatus(409)
-            ->assertJsonPath('message', 'Quality Control cannot be deleted because it is still used by: machine(s) CMM-1 – CMM (Master Data → Machines & Workstations). Change these to another department first, or deactivate the department instead.');
+            ->assertJsonPath('message', 'Quality Control cannot be deleted because it is still used by: machine(s) CMM-1 – CMM. These saved records are kept, so deactivate the department instead.');
         $this->assertNotNull(Department::find($department->id));
     }
 }

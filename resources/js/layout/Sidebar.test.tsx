@@ -40,12 +40,13 @@ describe('sidebar navigation', () => {
     });
 
     it('shows every module open by default and closes / reopens a submenu on click', async () => {
-        renderWithAuth(<Sidebar open={false} onClose={() => undefined} />, { user: makeUser(['dashboard.view', 'items.view', 'inventory.stock.view', 'users.view']) });
+        renderWithAuth(<Sidebar open={false} onClose={() => undefined} />, { user: makeUser(['dashboard.view', 'factories.view', 'users.view', 'items.view', 'inventory.stock.view']) });
         const nav = screen.getAllByRole('navigation', { name: 'Main navigation' })[0];
 
-        // Nothing is hidden: Master Data, Inventory and System Settings links are all visible.
-        expect(within(nav).getByRole('link', { name: 'Items / Products' })).toBeInTheDocument();
-        expect(within(nav).getByRole('link', { name: 'Stock Overview' })).toBeInTheDocument();
+        // Factory Setup and System Settings links are visible; the removed Master Data / Inventory menus are gone.
+        expect(within(nav).getByRole('link', { name: 'Factories' })).toBeInTheDocument();
+        expect(within(nav).queryByRole('button', { name: /Master Data/ })).not.toBeInTheDocument();
+        expect(within(nav).queryByRole('button', { name: /Inventory/ })).not.toBeInTheDocument();
         const toggle = within(nav).getByRole('button', { name: /System Settings/ });
         expect(toggle).toHaveAttribute('aria-expanded', 'true');
         expect(within(nav).getByRole('link', { name: 'Users' })).toHaveAttribute('href', '/settings/users');
@@ -53,7 +54,7 @@ describe('sidebar navigation', () => {
         await userEvent.click(toggle);
         expect(toggle).toHaveAttribute('aria-expanded', 'false');
         expect(within(nav).queryByRole('link', { name: 'Users' })).not.toBeInTheDocument();
-        expect(within(nav).getByRole('link', { name: 'Items / Products' })).toBeInTheDocument(); // other menus unaffected
+        expect(within(nav).getByRole('link', { name: 'Factories' })).toBeInTheDocument(); // other menus unaffected
 
         await userEvent.click(toggle);
         expect(toggle).toHaveAttribute('aria-expanded', 'true');

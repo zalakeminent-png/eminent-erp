@@ -85,7 +85,7 @@ Route::prefix('v1')->group(function () {
         });
 
         Route::controller(DepartmentController::class)->prefix('departments')->group(function () {
-            Route::get('/', 'index')->middleware('permission:departments.view|warehouses.create|warehouses.update|departments.assign-users|machines.create|machines.update|processes.create|processes.update|routings.create|routings.update');
+            Route::get('/', 'index')->middleware('permission:departments.view|warehouses.create|warehouses.update|departments.assign-users');
             Route::post('/', 'store')->middleware('permission:departments.create');
             Route::get('{department}', 'show')->middleware('permission:departments.view');
             Route::put('{department}', 'update')->middleware('permission:departments.update');
@@ -132,9 +132,5 @@ Route::prefix('v1')->group(function () {
 
         Route::get('lookups/users', [LookupController::class, 'users'])
             ->middleware('permission:departments.assign-managers|departments.assign-users|departments.create|warehouses.create|warehouses.update');
-
-        // ---- Module 3: Master Data Management -------------------------
-        require __DIR__.'/master-data.php';
-        require __DIR__.'/inventory.php';
     });
 });
