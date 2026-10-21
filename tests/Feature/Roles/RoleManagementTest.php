@@ -160,7 +160,7 @@ class RoleManagementTest extends TestCase
 
         $modules = collect($response->json('data.modules'))->keyBy('key');
         $this->assertSame(['view', 'create', 'update', 'delete', 'approve', 'export'], $response->json('data.standard_actions'));
-        $this->assertTrue($modules['inventory']['reserved']);
+        $this->assertTrue($modules['orders']['reserved']);
         $this->assertFalse($modules['users']['reserved']);
         $this->assertContains('users.reset-password', collect($modules['users']['permissions'])->pluck('name'));
         // Inapplicable actions are not created.

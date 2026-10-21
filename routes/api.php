@@ -133,5 +133,6 @@ Route::prefix('v1')->group(function () {
 
         // ---- Module 3: Master Data Management -------------------------
         require __DIR__.'/master-data.php';
+        require __DIR__.'/inventory.php';
     });
 });

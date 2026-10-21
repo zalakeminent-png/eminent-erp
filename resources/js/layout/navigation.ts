@@ -1,6 +1,7 @@
 import {
-    Boxes, Building, Building2, ClipboardCheck, ClipboardList, Cog, Database, Factory, FileSpreadsheet, FolderTree, GitBranch, Gauge, History,
-    LayoutDashboard, Layers, ListTree, MapPin, Network, Ruler, Settings, ShieldCheck, Tags, Users, Warehouse, Workflow, Wrench,
+    ArrowLeftRight, BookOpen, Boxes, Building, Building2, ClipboardCheck, ClipboardList, Cog, Database, Factory, FileBarChart, FileSpreadsheet,
+    FolderTree, GitBranch, Gauge, History, LayoutDashboard, Layers, ListTree, Lock, MapPin, Network, Package, PackageCheck, PackageMinus,
+    PackageOpen, Ruler, Settings, ShieldCheck, SlidersHorizontal, Tags, Trash2, Undo2, Users, Warehouse, Workflow, Wrench,
     type LucideIcon,
 } from 'lucide-react';
 
@@ -44,6 +45,29 @@ export const navigation: NavItem[] = [
             { label: 'QC Parameters', to: '/master-data/qc-parameters', icon: ClipboardList, permission: 'qc-specifications.view' },
             { label: 'Customers & Suppliers', to: '/master-data/partners', icon: Users, permission: 'business-partners.view' },
             { label: 'Excel Import', to: '/master-data/import', icon: FileSpreadsheet, permission: 'master-data.import' },
+        ],
+    },
+    {
+        label: 'Inventory & Warehouse',
+        icon: Package,
+        children: [
+            { label: 'Dashboard', to: '/inventory', icon: Gauge, permission: 'inventory.dashboard.view', end: true },
+            { label: 'Stock Overview', to: '/inventory/stock', icon: Boxes, permission: 'inventory.stock.view' },
+            { label: 'Opening Stock', to: '/inventory/opening-stock', icon: FileSpreadsheet, permission: 'inventory.opening-stock.view' },
+            { label: 'Goods Receipts', to: '/inventory/goods-receipts', icon: PackageCheck, permission: 'inventory.grn.view' },
+            { label: 'Stock Transfers', to: '/inventory/transfers', icon: ArrowLeftRight, permission: 'inventory.transfers.view' },
+            { label: 'Material Issue', to: '/inventory/material-issues', icon: PackageMinus, permission: 'inventory.material-issues.view' },
+            { label: 'Material Return', to: '/inventory/material-returns', icon: Undo2, permission: 'inventory.returns.view' },
+            { label: 'WIP Inventory', to: '/inventory/wip', icon: Factory, permission: 'inventory.wip.view' },
+            { label: 'Finished Goods', to: '/inventory/finished-goods', icon: PackageOpen, permission: 'inventory.finished-goods.view' },
+            { label: 'QC Stock', to: '/inventory/qc-stock', icon: ShieldCheck, permission: 'inventory.qc-disposition.view' },
+            { label: 'Scrap & Rejection', to: '/inventory/scrap', icon: Trash2, permission: 'inventory.scrap.view' },
+            { label: 'Stock Reservation', to: '/inventory/reservations', icon: Lock, permission: 'inventory.reservations.view' },
+            { label: 'Stock Adjustment', to: '/inventory/adjustments', icon: SlidersHorizontal, permission: 'inventory.adjustments.view' },
+            { label: 'Stock Counting', to: '/inventory/stock-counts', icon: ClipboardList, permission: 'inventory.counts.view' },
+            { label: 'Stock Ledger', to: '/inventory/ledger', icon: BookOpen, permission: 'inventory.ledger.view' },
+            { label: 'Reports', to: '/inventory/reports', icon: FileBarChart, permission: 'inventory.reports.view' },
+            { label: 'Inventory Settings', to: '/inventory/settings', icon: Settings, permission: 'inventory.settings.manage' },
         ],
     },
     {

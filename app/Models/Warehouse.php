@@ -15,7 +15,7 @@ class Warehouse extends Model
 {
     use TracksAuthors;
 
-    protected $fillable = ['factory_id', 'department_id', 'type_id', 'code', 'name', 'description', 'manager_id', 'is_active'];
+    protected $fillable = ['factory_id', 'department_id', 'type_id', 'stock_purpose', 'code', 'name', 'description', 'manager_id', 'is_active'];
 
     protected function casts(): array
     {

@@ -263,6 +263,9 @@ class UserController extends Controller
             $exists('warehouses', 'manager_id') ? 'a warehouse manager' : null,
             $exists('boms', 'approved_by') || $exists('product_routings', 'approved_by') || $exists('qc_specifications', 'approved_by')
                 ? 'the approver of engineering documents' : null,
+            // The stock ledger is immutable audit history and must keep its authors.
+            $exists('inventory_transactions', 'created_by') || $exists('inventory_ledger_entries', 'created_by')
+                ? 'the author of posted stock transactions' : null,
         ]));
     }
 

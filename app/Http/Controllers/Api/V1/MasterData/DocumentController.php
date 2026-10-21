@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\Api\V1\MasterData;
 
 use App\Http\Controllers\Controller;
+use App\Models\Inventory\InventoryDocument;
 use App\Models\MasterData\Item;
 use App\Models\MasterData\MasterDataDocument;
+use App\Services\Inventory\Documents\DocumentService;
 use App\Services\MasterData\DocumentStorage;
+use App\Services\Structure\StructureScope;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -40,7 +43,15 @@ class DocumentController extends Controller
         $document = MasterDataDocument::query()->findOrFail($id);
         $permission = self::PERMISSIONS[$document->documentable_type][$level] ?? null;
 
-        abort_unless($permission && $request->user()->can($permission), 403);
+        // Stock document attachments follow the owning document type's permissions and factory scope.
+        if ($document->documentable_type === InventoryDocument::class && $document->documentable) {
+            $handler = app(DocumentService::class)->handler($document->documentable->document_type);
+            $permission = $level === 0 ? $handler->module().'.view' : $handler->editPermission();
+            app(StructureScope::class)->ensureFactory($request->user(), $document->documentable->factory_id);
+            abort_unless($level === 0 || $document->documentable->status === 'draft', 409, 'Attachments of submitted documents cannot be deleted.');
+        }
+
+        abort_unless($permission && $request->user()->hasAnyPermission(explode('|', $permission)), 403);
         abort_unless($document->documentable !== null, 404);
 
         return $document;

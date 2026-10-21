@@ -17,6 +17,7 @@ import RoleDetailsPage from '@/pages/roles/RoleDetailsPage';
 import RolePermissionsPage from '@/pages/roles/RolePermissionsPage';
 import ActivityLogPage from '@/pages/activity/ActivityLogPage';
 import NotFoundPage from '@/pages/NotFoundPage';
+import { inventoryRoutes } from '@/pages/inventory/InventoryRoutes';
 import MasterDataDashboardPage from '@/pages/master-data/MasterDataDashboardPage';
 import ItemCategoriesPage from '@/pages/master-data/ItemCategoriesPage';
 import ItemListPage from '@/pages/master-data/items/ItemListPage';
@@ -123,6 +124,8 @@ export default function App() {
                         </Route>
                         <Route path="import" element={<RequirePermission permission="master-data.import"><ImportPage /></RequirePermission>} />
                     </Route>
+
+                    {inventoryRoutes()}
 
                     <Route path="factory-setup">
                         <Route path="structure" element={<RequirePermission permission="factory-structure.view"><FactoryStructurePage /></RequirePermission>} />

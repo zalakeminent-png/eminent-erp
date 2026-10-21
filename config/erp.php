@@ -145,13 +145,27 @@ return [
             'actions' => ['view', 'create', 'update', 'deactivate'],
         ],
 
+        // ---- Module 4: Inventory & Warehouse Management ----------------
+        // (replaces the former reserved "inventory" namespace)
+        'inventory.dashboard' => ['label' => 'Inventory Dashboard', 'group' => 'Inventory', 'actions' => ['view']],
+        'inventory.stock' => ['label' => 'Stock Overview', 'group' => 'Inventory', 'actions' => ['view']],
+        'inventory.opening-stock' => ['label' => 'Opening Stock', 'group' => 'Inventory', 'actions' => ['view', 'create', 'import', 'approve', 'post']],
+        'inventory.grn' => ['label' => 'Goods Receipts', 'group' => 'Inventory', 'actions' => ['view', 'create', 'update', 'post']],
+        'inventory.transfers' => ['label' => 'Stock Transfers', 'group' => 'Inventory', 'actions' => ['view', 'create', 'approve', 'issue', 'receive']],
+        'inventory.material-issues' => ['label' => 'Material Issues', 'group' => 'Inventory', 'actions' => ['view', 'create', 'approve', 'post']],
+        'inventory.returns' => ['label' => 'Material Returns', 'group' => 'Inventory', 'actions' => ['view', 'create', 'approve', 'post']],
+        'inventory.wip' => ['label' => 'WIP Inventory', 'group' => 'Inventory', 'actions' => ['view']],
+        'inventory.finished-goods' => ['label' => 'Finished Goods', 'group' => 'Inventory', 'actions' => ['view']],
+        'inventory.qc-disposition' => ['label' => 'QC Stock Disposition', 'group' => 'Inventory', 'actions' => ['view', 'release', 'hold', 'reject']],
+        'inventory.scrap' => ['label' => 'Scrap & Rejection', 'group' => 'Inventory', 'actions' => ['view', 'create', 'approve']],
+        'inventory.reservations' => ['label' => 'Stock Reservations', 'group' => 'Inventory', 'actions' => ['view', 'create', 'release']],
+        'inventory.adjustments' => ['label' => 'Stock Adjustments', 'group' => 'Inventory', 'actions' => ['view', 'create', 'approve', 'post']],
+        'inventory.counts' => ['label' => 'Stock Counting', 'group' => 'Inventory', 'actions' => ['view', 'create', 'submit', 'approve', 'post']],
+        'inventory.ledger' => ['label' => 'Stock Ledger', 'group' => 'Inventory', 'actions' => ['view']],
+        'inventory.reports' => ['label' => 'Inventory Reports', 'group' => 'Inventory', 'actions' => ['view', 'export']],
+        'inventory.settings' => ['label' => 'Inventory Settings (reason codes, location purposes)', 'group' => 'Inventory', 'actions' => ['manage']],
+
         // ---- Reserved namespaces for future modules (no functionality yet)
-        'inventory' => [
-            'label' => 'Inventory',
-            'group' => 'Operations',
-            'reserved' => true,
-            'actions' => ['view', 'create', 'update', 'delete', 'approve', 'export'],
-        ],
         'orders' => [
             'label' => 'Order Sheet',
             'group' => 'Operations',
@@ -429,7 +443,13 @@ return [
         | A referenced item's base UOM and item type become locked. Inventory
         | registers e.g. 'stock_ledger_entries' => 'item_id'.
         */
-        'item_references' => [],
+        // Inventory history locks item code / base UOM / type: posted quantities are in the base UOM.
+        'item_references' => [
+            'inventory_ledger_entries' => 'item_id',
+            'inventory_document_lines' => 'item_id',
+            'inventory_reservations' => 'item_id',
+            'opening_stock_import_rows' => 'item_id',
+        ],
 
         'documents' => [
             'disk' => env('ERP_DOCUMENT_DISK', 'local'),
@@ -443,6 +463,62 @@ return [
             // Commits above this many rows run on the queue (needs a worker).
             'queue_threshold' => (int) env('ERP_IMPORT_QUEUE_THRESHOLD', 500),
             'max_kb' => (int) env('ERP_IMPORT_MAX_KB', 10240),
+        ],
+    ],
+
+    /*
+    | Module 4: inventory. Quantity-based traceability (no batch/serial).
+    */
+    'inventory' => [
+        // Physical stock statuses. "Reserved" is logical (reservations table).
+        'stock_statuses' => [
+            'available' => 'Available',
+            'qc_pending' => 'QC Pending',
+            'qc_hold' => 'QC Hold',
+            'rework' => 'Rework',
+            'rejected' => 'Rejected',
+            'scrap' => 'Scrap',
+            'in_transit' => 'In Transit',
+        ],
+        // Only these statuses may be reserved / issued as normal stock.
+        'reservable_statuses' => ['available'],
+
+        // What a warehouse/location is used for (Module 2 extension).
+        'stock_purposes' => [
+            'raw_material' => 'Raw Material',
+            'production' => 'Production / WIP',
+            'qc_pending' => 'QC Pending',
+            'qc_hold' => 'QC Hold',
+            'finished_goods' => 'Finished Goods',
+            'rework' => 'Rework',
+            'rejected' => 'Rejected',
+            'scrap' => 'Scrap',
+            'packing' => 'Packing',
+            'dispatch_staging' => 'Dispatch Staging',
+            'general' => 'General Storage',
+            'in_transit' => 'In Transit',
+        ],
+
+        // Seeded once; configurable afterwards. [code, name, category]
+        'default_reason_codes' => [
+            ['MFG-DEFECT', 'Manufacturing Defect', 'rejection'],
+            ['DIM-REJECT', 'Dimensional Rejection', 'rejection'],
+            ['SURF-DEFECT', 'Surface Defect', 'rejection'],
+            ['DAMAGED', 'Damaged Material', 'scrap'],
+            ['PROC-SCRAP', 'Process Scrap', 'scrap'],
+            ['COUNT-VAR', 'Physical Count Variance', 'adjustment'],
+            ['DATA-CORR', 'Data Correction', 'adjustment'],
+            ['UNUSED', 'Unused Material Returned', 'return'],
+            ['QC-PASS', 'QC Accepted', 'qc'],
+            ['QC-FAIL', 'QC Failed', 'qc'],
+            ['OTHER', 'Other', 'general'],
+        ],
+        'reason_categories' => ['scrap', 'rejection', 'adjustment', 'return', 'qc', 'transfer', 'general'],
+
+        'opening_stock' => [
+            'max_rows' => (int) env('ERP_OPENING_STOCK_MAX_ROWS', 20000),
+            // Postings with more accepted rows than this run on the queue.
+            'queue_threshold' => (int) env('ERP_OPENING_STOCK_QUEUE_THRESHOLD', 2000),
         ],
     ],
 

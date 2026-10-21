@@ -65,6 +65,8 @@ Open http://localhost:8000 and sign in with the administrator account.
 | `ACTIVITY_LOG_RETENTION_DAYS` | Empty = keep forever; otherwise pruned daily |
 | `ERP_COMPANY_NAME`, `ERP_COMPANY_CODE` | Initial company created by the seeder |
 | `ERP_LOGO_MAX_KB` | Logo upload limit (default 2048) |
+| `ERP_OPENING_STOCK_MAX_ROWS` | Maximum rows per opening stock file (default 20000) |
+| `ERP_OPENING_STOCK_QUEUE_THRESHOLD` | Opening stock posts above this many rows run on the queue (default 2000) |
 
 Mail must be configured (`MAIL_*`) for invitations and password resets. With `MAIL_MAILER=log`,
 emails are written to `storage/logs/laravel.log`.
@@ -137,6 +139,43 @@ never re-applied, so permission-matrix changes survive re-seeding):
 composer install            # adds openspout/openspout
 php artisan migrate
 php artisan db:seed --class=MasterDataSeeder
+npm install && npm run build
+```
+
+## Module 4 — Inventory & Warehouse Management
+
+Stock ledger, opening stock (Excel), goods receipts, transfers, material issue/return, WIP and
+finished-goods views, QC stock dispositions, scrap & rejection, reservations, adjustments,
+physical counting, ledger, dashboard and 18 reports.
+
+- **One writer:** every stock change goes through `App\Services\Inventory\StockPostingService`.
+  It writes signed, immutable ledger entries (`inventory_ledger_entries`, base UOM) and updates
+  the cached `inventory_balances` (item + location + status) in the same DB transaction, under
+  row locks taken in a fixed order. UPDATE/DELETE on the ledger tables is refused by database
+  triggers. Corrections are compensating entries (adjustments, reversals), never edits.
+- **Idempotent:** each posting has a unique idempotency key (e.g. `grn:15:post`); repeating a
+  request returns the original transaction. Partial transfer receipts carry a client request key.
+- **Rules:** no negative stock (except items flagged `allow_negative_stock`, and only for
+  available stock); available stock never drops below active reservations; locations in a
+  running stock count are locked; new stock only enters active locations. QC items are received
+  into *QC Pending*; damaged returns go to *QC Hold*. Rejected/scrap/QC stock is never reservable.
+- **Values** use moving-average cost only where real costs exist; stock received without a cost
+  has unknown value and is reported as "not valued" (never estimated). Quantities of different
+  units are never added together.
+- **Stock purpose:** warehouses/locations have an optional `stock_purpose` (Inventory Settings);
+  a location inherits its warehouse's purpose. Material issues must go to Production / WIP.
+- **Opening stock:** template → upload → map → validate & preview → submit → approve → post.
+  Refused for any item/location/status that already has stock history. Imports above
+  `ERP_OPENING_STOCK_QUEUE_THRESHOLD` accepted rows (default 2000) post on the queue.
+- **Maintenance:** `php artisan inventory:verify-balances` (read-only check that balances equal
+  the ledger) and `inventory:expire-reservations` (scheduled daily; needs `schedule:run`).
+
+Setup on an existing install (additive; take a database backup first):
+
+```bash
+pg_dump -U postgres -Fc -f eminent_erp_before_module4.dump eminent_erp
+php artisan migrate
+php artisan db:seed --class=InventorySeeder   # permissions, reason codes, one-time role grants
 npm install && npm run build
 ```
 

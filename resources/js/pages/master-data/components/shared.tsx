@@ -32,7 +32,7 @@ export async function downloadFile(url: string, params?: Record<string, unknown>
     URL.revokeObjectURL(href);
 }
 
-type ItemOption = Pick<Item, 'id' | 'code' | 'name' | 'item_type' | 'is_active'> & { base_uom?: Item['base_uom'] };
+export type ItemOption = Pick<Item, 'id' | 'code' | 'name' | 'item_type' | 'is_active'> & { base_uom?: Item['base_uom'] };
 
 /** Searchable item picker (server-side search on code, name, drawing no.). */
 export function ItemPicker({

@@ -17,7 +17,7 @@ class WarehouseLocation extends Model
     use TracksAuthors;
 
     protected $fillable = [
-        'warehouse_id', 'parent_id', 'code', 'name', 'type', 'description',
+        'warehouse_id', 'parent_id', 'code', 'name', 'type', 'stock_purpose', 'description',
         'is_virtual', 'is_pickable', 'is_receivable', 'is_active',
     ];
 
