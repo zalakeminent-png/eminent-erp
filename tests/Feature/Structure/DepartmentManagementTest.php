@@ -3,6 +3,7 @@
 namespace Tests\Feature\Structure;
 
 use App\Models\Department;
+use App\Models\MasterData\Machine;
 use App\Models\Role;
 use App\Models\StructureType;
 use App\Models\User;
@@ -260,7 +261,7 @@ class DepartmentManagementTest extends StructureTestCase
         User::factory()->create(['department_id' => $department->id, 'factory_id' => $factory->id]);
 
         $this->actingAs($this->admin)->deleteJson($this->api("departments/{$department->id}"))
-            ->assertStatus(409)->assertJsonPath('message', fn ($m) => str_contains($m, 'it has assigned employees'));
+            ->assertStatus(409)->assertJsonPath('message', fn ($m) => str_contains($m, '1 employee assignment(s)'));
         $this->assertNotNull(Department::find($department->id));
     }
 
@@ -279,5 +280,29 @@ class DepartmentManagementTest extends StructureTestCase
         // Only the Admin role receives the new permission.
         $this->assertTrue($this->admin->can('departments.delete'));
         $this->assertFalse(Role::findByName('Factory Manager', 'web')->hasPermissionTo('departments.delete'));
+    }
+
+    public function test_hidden_storage_area_link_does_not_block_deletion(): void
+    {
+        $factory = $this->makeFactory();
+        $department = $this->makeDepartment($factory, ['name' => 'Quality Control']);
+        $store = $this->makeWarehouse($factory, ['department_id' => $department->id]);
+
+        $this->actingAs($this->admin)->deleteJson($this->api("departments/{$department->id}"))->assertOk();
+
+        $this->assertNull(Department::find($department->id));
+        $this->assertNull($store->fresh()->department_id); // storage area kept, link released
+    }
+
+    public function test_blocking_message_names_the_records_to_change(): void
+    {
+        $factory = $this->makeFactory();
+        $department = $this->makeDepartment($factory, ['name' => 'Quality Control']);
+        Machine::create(['factory_id' => $factory->id, 'department_id' => $department->id, 'code' => 'CMM-1', 'name' => 'CMM', 'is_active' => true]);
+
+        $this->actingAs($this->admin)->deleteJson($this->api("departments/{$department->id}"))
+            ->assertStatus(409)
+            ->assertJsonPath('message', 'Quality Control cannot be deleted because it is still used by: machine(s) CMM-1 – CMM (Master Data → Machines & Workstations). Change these to another department first, or deactivate the department instead.');
+        $this->assertNotNull(Department::find($department->id));
     }
 }

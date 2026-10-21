@@ -130,23 +130,38 @@ class DepartmentController extends Controller
     {
         $this->scope->ensureFactory($request->user(), $department->factory_id);
 
-        $exists = fn (string $table, string $column) => DB::table($table)->where($column, $department->id)->exists();
+        // Records users must change themselves first; each is named so it can be found.
+        $id = $department->id;
+        $names = fn ($rows, int $limit = 5) => $rows->take($limit)->implode(', ').($rows->count() > $limit ? ' …' : '');
+        $employees = DB::table('users')->where('department_id', $id)->count()
+            + DB::table('department_user')->where('department_id', $id)->count();
+        $machines = DB::table('machines')->where('department_id', $id)->orderBy('code')->get(['code', 'name'])->map(fn ($m) => "{$m->code} – {$m->name}");
+        $processes = DB::table('manufacturing_processes')->where('default_department_id', $id)->orderBy('code')->get(['code', 'name'])->map(fn ($p) => "{$p->code} – {$p->name}");
+        $routings = DB::table('routing_operations')->join('product_routings', 'product_routings.id', '=', 'routing_operations.routing_id')
+            ->where('routing_operations.department_id', $id)->distinct()->orderBy('routing_number')->pluck('routing_number');
+        $documents = DB::table('inventory_documents')->where('department_id', $id)->orderBy('document_number')->pluck('document_number');
+
         $blockers = array_values(array_filter([
-            $exists('users', 'department_id') || $exists('department_user', 'department_id') ? 'it has assigned employees' : null,
-            $exists('warehouses', 'department_id') ? 'storage areas are linked to it' : null,
-            $exists('machines', 'department_id') ? 'machines are assigned to it' : null,
-            $exists('manufacturing_processes', 'default_department_id') || $exists('routing_operations', 'department_id')
-                ? 'manufacturing processes or routings use it' : null,
-            $exists('inventory_documents', 'department_id') ? 'stock documents refer to it' : null,
+            $employees ? "{$employees} employee assignment(s) (Departments → Employees)" : null,
+            $machines->isNotEmpty() ? "machine(s) {$names($machines)} (Master Data → Machines & Workstations)" : null,
+            $processes->isNotEmpty() ? "default department of process(es) {$names($processes)} (Master Data → Manufacturing Processes)" : null,
+            $routings->isNotEmpty() ? "operations in routing(s) {$names($routings)} (Master Data → Product Routings)" : null,
+            $documents->isNotEmpty() ? "stock document(s) {$names($documents)}" : null,
         ]));
         if ($blockers) {
             return response()->json([
-                'message' => "{$department->name} cannot be deleted because ".implode(' and ', $blockers).'. Reassign these first, or deactivate the department instead.',
+                'message' => "{$department->name} cannot be deleted because it is still used by: ".implode('; ', $blockers).'. Change these to another department first, or deactivate the department instead.',
             ], 409);
         }
 
         $snapshot = $department->only(['id', 'code', 'name', 'factory_id']);
-        $department->delete();
+        DB::transaction(function () use ($department, &$snapshot) {
+            // Storage areas (warehouses) are internal and not shown anywhere, so
+            // their optional department link is released instead of blocking.
+            $snapshot['unlinked_storage_areas'] = DB::table('warehouses')->where('department_id', $department->id)->pluck('code')->all();
+            DB::table('warehouses')->where('department_id', $department->id)->update(['department_id' => null, 'updated_at' => now()]);
+            $department->delete();
+        });
         $this->activity->log('department.deleted', null, $snapshot, "Deleted department {$snapshot['name']} ({$snapshot['code']})");
 
         return response()->json(['message' => "{$snapshot['name']} has been deleted."]);
