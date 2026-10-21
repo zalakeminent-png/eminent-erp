@@ -1,8 +1,9 @@
-import { NavLink } from 'react-router-dom';
-import { Factory, X } from 'lucide-react';
+import { useEffect, useId, useState } from 'react';
+import { NavLink, matchPath, useLocation } from 'react-router-dom';
+import { ChevronDown, ChevronRight, Factory, X } from 'lucide-react';
 import { useAuth } from '@/auth/AuthContext';
 import { cx } from '@/lib/format';
-import { filterNavigation, isGroup, navigation, type NavLinkItem } from './navigation';
+import { filterNavigation, isGroup, navigation, type NavGroup, type NavLinkItem } from './navigation';
 
 function SidebarLink({ item, onNavigate, nested = false }: { item: NavLinkItem; onNavigate?: () => void; nested?: boolean }) {
     const Icon = item.icon;
@@ -26,6 +27,44 @@ function SidebarLink({ item, onNavigate, nested = false }: { item: NavLinkItem; 
                 </>
             )}
         </NavLink>
+    );
+}
+
+/**
+ * A main menu with its submenu. Clicking the heading opens / closes the
+ * submenu; the menu containing the current page opens automatically.
+ */
+function SidebarGroup({ item, onNavigate }: { item: NavGroup; onNavigate?: () => void }) {
+    const { pathname } = useLocation();
+    const containsActive = item.children.some((child) => matchPath({ path: child.to, end: child.end ?? false }, pathname) !== null);
+    const [open, setOpen] = useState(containsActive);
+    const submenuId = useId();
+
+    useEffect(() => {
+        if (containsActive) setOpen(true);
+    }, [containsActive]);
+
+    const Chevron = open ? ChevronDown : ChevronRight;
+
+    return (
+        <div>
+            <button
+                type="button"
+                onClick={() => setOpen((value) => !value)}
+                aria-expanded={open}
+                aria-controls={submenuId}
+                className={cx('flex w-full items-center gap-2 px-3 text-xs font-semibold uppercase tracking-wider text-slate-400 hover:text-slate-600', open && 'mb-2')}
+            >
+                <item.icon className="h-3.5 w-3.5" aria-hidden="true" />
+                {item.label}
+                <Chevron className="ml-auto h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+            <div id={submenuId} className="space-y-1" hidden={!open}>
+                {item.children.map((child) => (
+                    <SidebarLink key={child.to} item={child} onNavigate={onNavigate} nested />
+                ))}
+            </div>
+        </div>
     );
 }
 
@@ -57,17 +96,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                 {items.length === 0 && <p className="px-3 text-sm text-slate-500">No modules are available for your role.</p>}
                 {items.map((item) =>
                     isGroup(item) ? (
-                        <div key={item.label}>
-                            <p className="mb-2 flex items-center gap-2 px-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                                <item.icon className="h-3.5 w-3.5" aria-hidden="true" />
-                                {item.label}
-                            </p>
-                            <div className="space-y-1">
-                                {item.children.map((child) => (
-                                    <SidebarLink key={child.to} item={child} onNavigate={onClose} nested />
-                                ))}
-                            </div>
-                        </div>
+                        <SidebarGroup key={item.label} item={item} onNavigate={onClose} />
                     ) : (
                         <div key={item.to} className="space-y-1">
                             <SidebarLink item={item} onNavigate={onClose} />

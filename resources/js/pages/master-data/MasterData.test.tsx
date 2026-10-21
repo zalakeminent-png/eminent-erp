@@ -48,7 +48,7 @@ describe('master data navigation', () => {
     it('shows only the master data screens the user may access', () => {
         renderWithAuth(<Sidebar open={false} onClose={() => undefined} />, { user: makeUser(['master-data.view', 'items.view', 'item-categories.view', 'uoms.view']) });
         const nav = screen.getAllByRole('navigation', { name: 'Main navigation' })[0];
-        const links = within(nav).getAllByRole('link').map((l) => l.textContent);
+        const links = within(nav).getAllByRole('link', { hidden: true }).map((l) => l.textContent);
 
         expect(links).toEqual(['Dashboard', 'Item Categories', 'Items / Products', 'Units of Measurement']);
         expect(within(nav).queryByText('Bill of Materials')).not.toBeInTheDocument();

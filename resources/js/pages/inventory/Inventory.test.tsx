@@ -67,7 +67,7 @@ describe('inventory navigation', () => {
     it('shows only inventory screens the user may access', () => {
         renderWithAuth(<Sidebar open={false} onClose={() => undefined} />, { user: makeUser(['inventory.stock.view', 'inventory.grn.view', 'inventory.counts.view']) });
         const nav = screen.getAllByRole('navigation', { name: 'Main navigation' })[0];
-        const links = within(nav).getAllByRole('link').map((l) => l.textContent);
+        const links = within(nav).getAllByRole('link', { hidden: true }).map((l) => l.textContent);
         expect(links).toEqual(['Stock Overview', 'Goods Receipts', 'Stock Counting']);
     });
 });

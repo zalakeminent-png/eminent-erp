@@ -24,7 +24,7 @@ const tree = [node(1, 'RACK-A', [node(2, 'SHELF-A1'), node(3, 'SHELF-A2', [], { 
 beforeEach(() => get.mockReset());
 
 describe('factory setup navigation', () => {
-    const links = () => within(screen.getAllByRole('navigation', { name: 'Main navigation' })[0]).queryAllByRole('link').map((l) => l.textContent);
+    const links = () => within(screen.getAllByRole('navigation', { name: 'Main navigation' })[0]).queryAllByRole('link', { hidden: true }).map((l) => l.textContent);
 
     it('shows only the factory setup screens the user is permitted to see', () => {
         renderWithAuth(<Sidebar open={false} onClose={() => undefined} />, { user: makeUser(['warehouses.view', 'locations.view']) });
