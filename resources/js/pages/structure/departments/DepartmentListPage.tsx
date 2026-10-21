@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Building, Eye, Pencil, Plus, Power, Users } from 'lucide-react';
+import { Building, Eye, Pencil, Plus, Power, Trash2, Users } from 'lucide-react';
 import { useAuth } from '@/auth/AuthContext';
 import { useApi, useDebouncedValue } from '@/hooks/useApi';
 import { Card } from '@/components/ui/Card';
 import { Alert, EmptyState, PageHeader, StatusBadge } from '@/components/ui/Feedback';
 import { Button, ButtonLink } from '@/components/ui/Button';
 import { Pagination, SortableTh, Table, Td, Th } from '@/components/ui/Table';
+import { ConfirmDialog } from '@/components/ui/Modal';
 import { LoadingBlock } from '@/components/ui/Spinner';
+import { useToast } from '@/components/ui/Toast';
+import { api, errorMessage } from '@/lib/api';
 import type { Paginated } from '@/types';
 import type { Department, Factory, StructureType } from '../types';
 import { FilterBar, SearchInput, filterInputClass, useListParams } from '../components/ListControls';
@@ -26,6 +29,26 @@ export default function DepartmentListPage() {
     const factories = useApi<{ data: Factory[] }>('/factories', { all: 1 });
     const types = useApi<{ data: StructureType[] }>('/structure-types', { category: 'department' });
     const status = useStatusAction<Department>('departments', 'department', () => reload(), 'Assigned employees keep their assignment.');
+    const toast = useToast();
+    const [deleting, setDeleting] = useState<Department | null>(null);
+    const [busy, setBusy] = useState(false);
+
+    const confirmDelete = async () => {
+        if (!deleting) return;
+        setBusy(true);
+        try {
+            // Removed from the list only after the server confirms the delete.
+            const { data: result } = await api.delete<{ message: string }>(`/departments/${deleting.id}`);
+            toast.success(result.message);
+            setDeleting(null);
+            reload();
+        } catch (err) {
+            toast.error(errorMessage(err));
+            setDeleting(null);
+        } finally {
+            setBusy(false);
+        }
+    };
 
     return (
         <>
@@ -95,6 +118,9 @@ export default function DepartmentListPage() {
                                                 {can(d.is_active ? 'departments.deactivate' : 'departments.update') && (
                                                     <Button variant="ghost" size="sm" onClick={() => status.request(d)} aria-label={`${d.is_active ? 'Deactivate' : 'Activate'} ${d.name}`} icon={<Power className={`h-4 w-4 ${d.is_active ? 'text-red-500' : 'text-emerald-600'}`} />} />
                                                 )}
+                                                {can('departments.delete') && (
+                                                    <Button variant="ghost" size="sm" onClick={() => setDeleting(d)} aria-label={`Delete ${d.name}`} icon={<Trash2 className="h-4 w-4 text-red-500" />} />
+                                                )}
                                             </div>
                                         </Td>
                                     </tr>
@@ -106,6 +132,18 @@ export default function DepartmentListPage() {
                 ) : null}
             </Card>
             {status.dialog}
+            {deleting && (
+                <ConfirmDialog
+                    open
+                    title="Delete department"
+                    confirmLabel="Delete"
+                    tone="danger"
+                    loading={busy}
+                    onCancel={() => setDeleting(null)}
+                    onConfirm={confirmDelete}
+                    message={<>Are you sure you want to permanently delete <strong>{deleting.name}</strong> ({deleting.code})? This cannot be undone. Departments with employees or linked records cannot be deleted — deactivate them instead.</>}
+                />
+            )}
         </>
     );
 }

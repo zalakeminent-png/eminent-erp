@@ -3,16 +3,18 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Sidebar } from '@/layout/Sidebar';
 import { LocationTree } from '@/pages/structure/components/LocationTree';
+import DepartmentListPage from '@/pages/structure/departments/DepartmentListPage';
 import FactoryListPage from '@/pages/structure/factories/FactoryListPage';
 import FactoryStructurePage from '@/pages/structure/FactoryStructurePage';
 import type { LocationNode } from '@/pages/structure/types';
 import { makeUser, renderWithAuth } from '@/test/utils';
 
 const get = vi.fn();
+const del = vi.fn();
 
 vi.mock('@/lib/api', async (importOriginal) => {
     const actual = await importOriginal<typeof import('@/lib/api')>();
-    return { ...actual, api: { get: (...args: unknown[]) => get(...args), post: vi.fn(), put: vi.fn(), patch: vi.fn() } };
+    return { ...actual, api: { get: (...args: unknown[]) => get(...args), post: vi.fn(), put: vi.fn(), patch: vi.fn(), delete: (...args: unknown[]) => del(...args) } };
 });
 
 const node = (id: number, code: string, children: LocationNode[] = [], extra: Partial<LocationNode> = {}): LocationNode => ({
@@ -21,7 +23,7 @@ const node = (id: number, code: string, children: LocationNode[] = [], extra: Pa
 
 const tree = [node(1, 'RACK-A', [node(2, 'SHELF-A1'), node(3, 'SHELF-A2', [], { is_virtual: true })]), node(4, 'RACK-B')];
 
-beforeEach(() => get.mockReset());
+beforeEach(() => { get.mockReset(); del.mockReset(); });
 
 describe('factory setup navigation', () => {
     const links = () => within(screen.getAllByRole('navigation', { name: 'Main navigation' })[0]).queryAllByRole('link', { hidden: true }).map((l) => l.textContent);
@@ -140,5 +142,52 @@ describe('factory structure overview', () => {
         renderWithAuth(<FactoryStructurePage />, { user: makeUser(['factory-structure.view']) });
 
         expect(await screen.findByText('No factories set up yet')).toBeInTheDocument();
+    });
+});
+
+describe("department delete", () => {
+    const department = { id: 12, factory_id: 7, factory: { id: 7, code: "PUNE", name: "Pune Plant" }, code: "PACK", name: "Packing", type: null, manager: null, supervisor: null, members_count: 0, is_active: true };
+    const listResponse = { data: { data: [department], meta: { current_page: 1, last_page: 1, per_page: 15, total: 1, from: 1, to: 1 } } };
+
+    beforeEach(() => {
+        get.mockImplementation((url: string) => Promise.resolve(url === "/departments" ? listResponse : { data: { data: [] } }));
+    });
+
+    it("deletes only after confirmation and refreshes the list", async () => {
+        del.mockResolvedValue({ data: { message: "Packing has been deleted." } });
+        renderWithAuth(<DepartmentListPage />, { user: makeUser(["departments.view", "departments.delete"]) });
+
+        await userEvent.click(await screen.findByRole("button", { name: "Delete Packing" }));
+        expect(del).not.toHaveBeenCalled();
+        expect(screen.getByRole("dialog")).toHaveTextContent("permanently delete Packing");
+        const loadsBefore = get.mock.calls.filter(([u]) => u === "/departments").length;
+
+        await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Delete" }));
+        expect(del).toHaveBeenCalledWith("/departments/12");
+        expect(await screen.findByText("Packing has been deleted.")).toBeInTheDocument();
+        expect(get.mock.calls.filter(([u]) => u === "/departments").length).toBeGreaterThan(loadsBefore);
+    });
+
+    it("leaves the department unchanged when cancelled", async () => {
+        renderWithAuth(<DepartmentListPage />, { user: makeUser(["departments.view", "departments.delete"]) });
+
+        await userEvent.click(await screen.findByRole("button", { name: "Delete Packing" }));
+        await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancel" }));
+        expect(del).not.toHaveBeenCalled();
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        expect(screen.getByText("Packing")).toBeInTheDocument();
+    });
+
+    it("shows the server refusal and hides the button without permission", async () => {
+        del.mockRejectedValue({ isAxiosError: true, response: { status: 409, data: { message: "Packing cannot be deleted because it has assigned employees." } } });
+        const { unmount } = renderWithAuth(<DepartmentListPage />, { user: makeUser(["departments.view", "departments.delete"]) });
+        await userEvent.click(await screen.findByRole("button", { name: "Delete Packing" }));
+        await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Delete" }));
+        expect(await screen.findByText(/cannot be deleted|Something went wrong/)).toBeInTheDocument();
+        unmount();
+
+        renderWithAuth(<DepartmentListPage />, { user: makeUser(["departments.view", "departments.update", "departments.deactivate"]) });
+        expect(await screen.findByText("Packing")).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Delete Packing" })).not.toBeInTheDocument();
     });
 });

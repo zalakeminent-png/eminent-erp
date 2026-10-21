@@ -122,6 +122,36 @@ class DepartmentController extends Controller
         return new DepartmentResource($this->detail($department));
     }
 
+    /**
+     * Permanently deletes a department that nothing refers to. Departments
+     * with employees or linked records must be reassigned (or deactivated).
+     */
+    public function destroy(Request $request, Department $department): JsonResponse
+    {
+        $this->scope->ensureFactory($request->user(), $department->factory_id);
+
+        $exists = fn (string $table, string $column) => DB::table($table)->where($column, $department->id)->exists();
+        $blockers = array_values(array_filter([
+            $exists('users', 'department_id') || $exists('department_user', 'department_id') ? 'it has assigned employees' : null,
+            $exists('warehouses', 'department_id') ? 'storage areas are linked to it' : null,
+            $exists('machines', 'department_id') ? 'machines are assigned to it' : null,
+            $exists('manufacturing_processes', 'default_department_id') || $exists('routing_operations', 'department_id')
+                ? 'manufacturing processes or routings use it' : null,
+            $exists('inventory_documents', 'department_id') ? 'stock documents refer to it' : null,
+        ]));
+        if ($blockers) {
+            return response()->json([
+                'message' => "{$department->name} cannot be deleted because ".implode(' and ', $blockers).'. Reassign these first, or deactivate the department instead.',
+            ], 409);
+        }
+
+        $snapshot = $department->only(['id', 'code', 'name', 'factory_id']);
+        $department->delete();
+        $this->activity->log('department.deleted', null, $snapshot, "Deleted department {$snapshot['name']} ({$snapshot['code']})");
+
+        return response()->json(['message' => "{$snapshot['name']} has been deleted."]);
+    }
+
     /** Department Employees: primary and additional members. */
     public function users(Request $request, Department $department): AnonymousResourceCollection
     {

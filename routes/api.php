@@ -90,6 +90,7 @@ Route::prefix('v1')->group(function () {
             Route::get('{department}', 'show')->middleware('permission:departments.view');
             Route::put('{department}', 'update')->middleware('permission:departments.update');
             Route::patch('{department}/status', 'updateStatus')->middleware('permission:departments.update|departments.deactivate');
+            Route::delete('{department}', 'destroy')->middleware('permission:departments.delete');
             Route::get('{department}/users', 'users')->middleware('permission:departments.view');
             Route::put('{department}/users', 'syncUsers')->middleware('permission:departments.assign-users');
             Route::put('{department}/supervisor', 'assignLeaders')->middleware('permission:departments.assign-managers');

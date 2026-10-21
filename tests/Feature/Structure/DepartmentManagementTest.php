@@ -3,6 +3,7 @@
 namespace Tests\Feature\Structure;
 
 use App\Models\Department;
+use App\Models\Role;
 use App\Models\StructureType;
 use App\Models\User;
 
@@ -200,7 +201,9 @@ class DepartmentManagementTest extends StructureTestCase
             ->assertJsonValidationErrors('is_active');
 
         $this->assertDatabaseHas('activity_logs', ['action' => 'department.deactivated', 'entity_id' => $department->id]);
-        $this->actingAs($this->admin)->deleteJson($this->api("departments/{$department->id}"))->assertStatus(405);
+        // Deactivating does not grant deleting.
+        $this->actingAs($this->createUserWithPermissions(['departments.view', 'departments.deactivate']))
+            ->deleteJson($this->api("departments/{$department->id}"))->assertForbidden();
         $this->assertModelExists($department);
     }
 
@@ -234,5 +237,47 @@ class DepartmentManagementTest extends StructureTestCase
 
         // No departments were created automatically.
         $this->assertSame(0, Department::count());
+    }
+
+    public function test_admin_can_delete_an_unused_department(): void
+    {
+        $factory = $this->makeFactory();
+        $keep = $this->makeDepartment($factory, ['code' => 'KEEP']);
+        $gone = $this->makeDepartment($factory, ['code' => 'GONE', 'name' => 'Old Packing']);
+
+        $this->actingAs($this->admin)->deleteJson($this->api("departments/{$gone->id}"))
+            ->assertOk()->assertJsonPath('message', 'Old Packing has been deleted.');
+
+        $this->assertNull(Department::find($gone->id));
+        $this->assertNotNull(Department::find($keep->id)); // only the selected department
+        $this->assertDatabaseHas('activity_logs', ['action' => 'department.deleted']);
+    }
+
+    public function test_department_in_use_cannot_be_deleted(): void
+    {
+        $factory = $this->makeFactory();
+        $department = $this->makeDepartment($factory, ['name' => 'Machining']);
+        User::factory()->create(['department_id' => $department->id, 'factory_id' => $factory->id]);
+
+        $this->actingAs($this->admin)->deleteJson($this->api("departments/{$department->id}"))
+            ->assertStatus(409)->assertJsonPath('message', fn ($m) => str_contains($m, 'it has assigned employees'));
+        $this->assertNotNull(Department::find($department->id));
+    }
+
+    public function test_department_delete_requires_permission_and_scope(): void
+    {
+        $factory = $this->makeFactory();
+        $department = $this->makeDepartment($factory);
+
+        $manager = $this->createUserWithPermissions(['departments.view', 'departments.update', 'departments.deactivate']);
+        $this->actingAs($manager)->deleteJson($this->api("departments/{$department->id}"))->assertForbidden();
+
+        $otherFactoryAdmin = $this->scopedUser($this->makeFactory(), ['departments.view', 'departments.delete']);
+        $this->actingAs($otherFactoryAdmin)->deleteJson($this->api("departments/{$department->id}"))->assertNotFound();
+
+        $this->assertNotNull(Department::find($department->id));
+        // Only the Admin role receives the new permission.
+        $this->assertTrue($this->admin->can('departments.delete'));
+        $this->assertFalse(Role::findByName('Factory Manager', 'web')->hasPermissionTo('departments.delete'));
     }
 }

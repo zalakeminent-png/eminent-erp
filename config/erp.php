@@ -65,7 +65,7 @@ return [
         'departments' => [
             'label' => 'Departments',
             'group' => 'Factory Setup',
-            'actions' => ['view', 'create', 'update', 'deactivate', 'assign-users', 'assign-managers'],
+            'actions' => ['view', 'create', 'update', 'deactivate', 'delete', 'assign-users', 'assign-managers'],
         ],
         'warehouses' => [
             'label' => 'Warehouses',
