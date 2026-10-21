@@ -211,6 +211,61 @@ class UserController extends Controller
         return response()->json(['message' => "A password reset link has been emailed to {$user->email}."]);
     }
 
+    /**
+     * Permanently deletes a user account. Refused for the actor's own account,
+     * the last active administrator, users the actor may not manage, and users
+     * still referenced as leaders or as approvers of engineering documents
+     * (reassign them or deactivate the account instead).
+     */
+    public function destroy(Request $request, User $user): JsonResponse
+    {
+        $actor = $request->user();
+        $this->guard->ensureNotSelf($actor, $user, 'You cannot delete your own account.');
+        $user->load('roles');
+        $this->guard->ensureCanManage($actor, $user);
+        $this->guard->ensureAdministratorRemains($user, false);
+
+        if ($blockers = $this->deletionBlockers($user)) {
+            return response()->json([
+                'message' => "{$user->full_name} cannot be deleted because they are ".implode(' and ', $blockers).'. Reassign these first, or deactivate the account instead.',
+            ], 409);
+        }
+
+        $snapshot = [
+            'user_id' => $user->id,
+            'email' => $user->email,
+            'name' => $user->full_name,
+            'employee_code' => $user->employee_code,
+            'roles' => $user->roles->pluck('name')->all(),
+        ];
+
+        DB::transaction(function () use ($user) {
+            $user->syncRoles([]);
+            $user->syncPermissions([]);
+            $user->additionalDepartments()->detach();
+            DB::table('password_reset_tokens')->where('email', $user->email)->delete();
+            $user->delete();
+        });
+        $this->sessions->terminate($user);
+
+        $this->activity->log('user.deleted', null, $snapshot, "Deleted user {$snapshot['name']} ({$snapshot['email']})");
+
+        return response()->json(['message' => "{$snapshot['name']} has been deleted."]);
+    }
+
+    /** @return list<string> */
+    private function deletionBlockers(User $user): array
+    {
+        $exists = fn (string $table, string $column) => DB::table($table)->where($column, $user->id)->exists();
+
+        return array_values(array_filter([
+            $exists('departments', 'manager_id') || $exists('departments', 'supervisor_id') ? 'a department manager or supervisor' : null,
+            $exists('warehouses', 'manager_id') ? 'a warehouse manager' : null,
+            $exists('boms', 'approved_by') || $exists('product_routings', 'approved_by') || $exists('qc_specifications', 'approved_by')
+                ? 'the approver of engineering documents' : null,
+        ]));
+    }
+
     private function sendInvitation(User $user): bool
     {
         try {

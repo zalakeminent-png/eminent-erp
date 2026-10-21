@@ -36,7 +36,7 @@ return [
         'users' => [
             'label' => 'Users',
             'group' => 'System',
-            'actions' => ['view', 'create', 'update', 'activate', 'deactivate', 'reset-password'],
+            'actions' => ['view', 'create', 'update', 'activate', 'deactivate', 'reset-password', 'delete'],
         ],
         'roles' => [
             'label' => 'Roles',

@@ -51,6 +51,7 @@ Route::prefix('v1')->group(function () {
             Route::put('{user}', 'update')->middleware('permission:users.update');
             // Activate vs deactivate permission is checked in the controller.
             Route::patch('{user}/status', 'updateStatus')->middleware('permission:users.activate|users.deactivate');
+            Route::delete('{user}', 'destroy')->middleware('permission:users.delete');
             Route::post('{user}/send-password-reset', 'sendPasswordReset')->middleware(['permission:users.reset-password', 'throttle:6,1']);
         });
 

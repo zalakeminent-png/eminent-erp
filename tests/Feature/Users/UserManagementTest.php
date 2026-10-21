@@ -2,6 +2,9 @@
 
 namespace Tests\Feature\Users;
 
+use App\Models\ActivityLog;
+use App\Models\Department;
+use App\Models\Factory;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
@@ -238,12 +241,54 @@ class UserManagementTest extends TestCase
         $this->assertFalse($manager->fresh()->hasRole('Admin'));
     }
 
-    public function test_users_cannot_be_deleted_via_api(): void
+    public function test_admin_can_delete_another_user(): void
     {
-        $user = $this->createUserWithRole('QC');
+        $user = $this->createUserWithRole('QC', ['email' => 'qc@factory.test']);
+        DB::table('password_reset_tokens')->insert(['email' => 'qc@factory.test', 'token' => 'x', 'created_at' => now()]);
 
-        $this->actingAs($this->admin)->deleteJson($this->api("users/{$user->id}"))->assertStatus(405);
+        $this->actingAs($this->admin)->deleteJson($this->api("users/{$user->id}"))
+            ->assertOk()->assertJsonPath('message', "{$user->full_name} has been deleted.");
+
+        $this->assertModelMissing($user);
+        $this->assertDatabaseMissing('model_has_roles', ['model_id' => $user->id, 'model_type' => User::class]);
+        $this->assertDatabaseMissing('password_reset_tokens', ['email' => 'qc@factory.test']);
+        $this->actingAs($this->admin)->getJson($this->api('users?search=qc@factory.test'))->assertJsonCount(0, 'data');
+
+        $log = ActivityLog::where('action', 'user.deleted')->sole();
+        $this->assertSame('qc@factory.test', $log->metadata['email']);
+        $this->assertSame($this->admin->id, $log->actor_id);
+
+        // Another admin can be deleted while an active admin remains.
+        $otherAdmin = $this->createAdmin();
+        $this->actingAs($this->admin)->deleteJson($this->api("users/{$otherAdmin->id}"))->assertOk();
+    }
+
+    public function test_user_deletion_safeguards(): void
+    {
+        // Own account.
+        $this->actingAs($this->admin)->deleteJson($this->api("users/{$this->admin->id}"))->assertForbidden();
+
+        // Last active administrator (actor holds every permission but not the Admin role).
+        $delegate = $this->createUserWithPermissions(Permission::pluck('name')->all());
+        $this->actingAs($delegate)->deleteJson($this->api("users/{$this->admin->id}"))
+            ->assertUnprocessable()->assertJsonValidationErrors('is_active');
+
+        // Permission required; users above the actor's level are protected.
+        $user = $this->createUserWithRole('QC');
+        $this->actingAs($this->createUserWithPermissions(['users.view', 'users.update']))->deleteJson($this->api("users/{$user->id}"))->assertForbidden();
+        $this->actingAs($this->createUserWithPermissions(['users.view', 'users.delete']))->deleteJson($this->api("users/{$this->admin->id}"))->assertForbidden();
+
+        // Still referenced as a department manager: refused, nothing removed.
+        $factory = Factory::factory()->create();
+        $department = new Department(['factory_id' => $factory->id, 'code' => 'QC', 'name' => 'QC', 'is_active' => true]);
+        $department->manager_id = $user->id;
+        $department->save();
+        $this->actingAs($this->admin)->deleteJson($this->api("users/{$user->id}"))
+            ->assertStatus(409)->assertJsonPath('message', fn ($m) => str_contains($m, 'department manager'));
+
+        $this->assertModelExists($this->admin);
         $this->assertModelExists($user);
+        $this->assertTrue($user->fresh()->hasRole('QC'));
     }
 
     public function test_user_details_hide_sensitive_fields(): void

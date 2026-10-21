@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Eye, KeyRound, Pencil, Plus, Power, Search, Users } from 'lucide-react';
+import { Eye, KeyRound, Pencil, Plus, Power, Search, Trash2, Users } from 'lucide-react';
 import { useAuth } from '@/auth/AuthContext';
 import { useApi, useDebouncedValue } from '@/hooks/useApi';
 import { Card } from '@/components/ui/Card';
@@ -147,6 +147,9 @@ export default function UserListPage() {
                                                     )}
                                                     {u.is_active && can('users.reset-password') && (
                                                         <Button variant="ghost" size="sm" onClick={() => actions.sendReset(u)} aria-label={`Send password reset to ${u.full_name}`} icon={<KeyRound className="h-4 w-4" />} />
+                                                    )}
+                                                    {!isSelf && can('users.delete') && (
+                                                        <Button variant="ghost" size="sm" onClick={() => actions.remove(u)} aria-label={`Delete ${u.full_name}`} icon={<Trash2 className="h-4 w-4 text-red-500" />} />
                                                     )}
                                                 </div>
                                             </Td>
