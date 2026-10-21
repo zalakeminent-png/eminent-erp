@@ -16,7 +16,7 @@ import type { StructureType } from './types';
 type Category = StructureType['category'];
 type Editing = { category: Category; type: StructureType | null } | null;
 
-/** Configurable department and warehouse types. */
+/** Configurable department types. */
 export default function StructureTypesPage() {
     const { can } = useAuth();
     const toast = useToast();
@@ -59,7 +59,7 @@ export default function StructureTypesPage() {
             <Card>
                 <CardHeader
                     title={title}
-                    description="Suggestions only — no departments or warehouses are created from these."
+                    description="Suggestions only — no departments are created from these."
                     actions={can('structure-types.create') && <Button size="sm" icon={<Plus className="h-4 w-4" />} onClick={() => open(category, null)}>Add type</Button>}
                 />
                 <Table>
@@ -84,11 +84,10 @@ export default function StructureTypesPage() {
 
     return (
         <>
-            <PageHeader title="Department & Warehouse Types" description="Configurable classifications. Types in use can be deactivated but not deleted." />
+            <PageHeader title="Department Types" description="Configurable classifications. Types in use can be deactivated but not deleted." />
             {error ? <Alert tone="danger">{error}</Alert> : loading ? <LoadingBlock /> : (
                 <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
                     {section('department', 'Department types')}
-                    {section('warehouse', 'Warehouse types')}
                 </div>
             )}
             <Modal

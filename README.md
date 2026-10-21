@@ -142,6 +142,15 @@ php artisan db:seed --class=MasterDataSeeder
 npm install && npm run build
 ```
 
+## Warehouses are internal
+
+All storage is inside the company, so warehouses are not managed in the UI. Each factory has one
+internal storage area (its existing warehouse, or `MAIN`, created automatically by
+`App\Services\Structure\DefaultWarehouse` when the first location is added). Users work with
+**Factory → Storage locations** only; APIs accept `factory_id` (or a location) wherever a
+warehouse used to be required. The `warehouses` table, API and permissions remain for data
+integrity but are hidden (the Warehouses module is marked `hidden` in `config/erp.php`).
+
 ## Module 4 — Inventory & Warehouse Management
 
 Stock ledger, opening stock (Excel), goods receipts, transfers, material issue/return, WIP and

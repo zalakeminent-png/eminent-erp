@@ -23,7 +23,7 @@ export default function FactoryListPage() {
         search: debounced, status: list.get('status'), type: list.get('type'),
         sort: list.sort, direction: list.direction, page: list.page, per_page: 15,
     });
-    const status = useStatusAction<Factory>('factories', 'factory', () => reload(), 'Departments, warehouses and locations are not changed.');
+    const status = useStatusAction<Factory>('factories', 'factory', () => reload(), 'Departments and storage locations are not changed.');
 
     return (
         <>
@@ -54,7 +54,7 @@ export default function FactoryListPage() {
                     <EmptyState
                         icon={<FactoryIcon className="h-6 w-6" />}
                         title={list.hasFilters ? 'No factories match your filters' : 'No factories yet'}
-                        description={list.hasFilters ? undefined : 'Create your factory to start setting up departments and warehouses.'}
+                        description={list.hasFilters ? undefined : 'Create your factory to start setting up departments and storage locations.'}
                         action={!list.hasFilters && can('factories.create') ? <ButtonLink to="/factory-setup/factories/new">Add factory</ButtonLink> : undefined}
                     />
                 ) : data ? (
@@ -66,7 +66,7 @@ export default function FactoryListPage() {
                                     <SortableTh label="Factory" field="name" sort={list.sort} direction={list.direction} onSort={list.onSort} />
                                     <SortableTh label="Type" field="type" sort={list.sort} direction={list.direction} onSort={list.onSort} className="hidden md:table-cell" />
                                     <SortableTh label="City" field="city" sort={list.sort} direction={list.direction} onSort={list.onSort} className="hidden lg:table-cell" />
-                                    <Th className="hidden text-right sm:table-cell">Depts / WH</Th>
+                                    <Th className="hidden text-right sm:table-cell">Departments</Th>
                                     <SortableTh label="Status" field="is_active" sort={list.sort} direction={list.direction} onSort={list.onSort} />
                                     <Th className="text-right"><span className="sr-only">Actions</span></Th>
                                 </tr>
@@ -78,7 +78,7 @@ export default function FactoryListPage() {
                                         <Td><Link to={`/factory-setup/factories/${f.id}`} className="font-medium text-slate-900 hover:text-brand-700">{f.name}</Link></Td>
                                         <Td className="hidden md:table-cell"><Badge>{f.type_label}</Badge></Td>
                                         <Td className="hidden lg:table-cell">{f.city ?? '—'}</Td>
-                                        <Td className="hidden text-right tabular-nums sm:table-cell">{f.departments_count} / {f.warehouses_count}</Td>
+                                        <Td className="hidden text-right tabular-nums sm:table-cell">{f.departments_count}</Td>
                                         <Td><StatusBadge active={f.is_active} /></Td>
                                         <Td className="whitespace-nowrap text-right">
                                             <div className="flex justify-end gap-1">

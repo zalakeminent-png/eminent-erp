@@ -8,7 +8,7 @@ import { Button, ButtonLink } from '@/components/ui/Button';
 import { Table, Td, Th } from '@/components/ui/Table';
 import { LoadingBlock } from '@/components/ui/Spinner';
 import { formatDateTime } from '@/lib/format';
-import type { Department, Factory, Warehouse } from '../types';
+import type { Department, Factory, Location } from '../types';
 import { useStatusAction } from '../components/useStatusAction';
 
 export default function FactoryDetailsPage() {
@@ -16,8 +16,8 @@ export default function FactoryDetailsPage() {
     const { can } = useAuth();
     const { data, loading, error, setData } = useApi<{ data: Factory }>(`/factories/${id}`);
     const departments = useApi<{ data: Department[] }>(can('departments.view') ? '/departments' : null, { factory_id: id, all: 1 });
-    const warehouses = useApi<{ data: Warehouse[] }>(can('warehouses.view') ? '/warehouses' : null, { factory_id: id, all: 1 });
-    const status = useStatusAction<Factory>('factories', 'factory', (f) => setData({ data: f }), 'Departments, warehouses and locations are not changed.');
+    const locations = useApi<{ data: Location[]; meta: { total: number } }>(can('locations.view') ? '/locations' : null, { factory_id: id, per_page: 200 });
+    const status = useStatusAction<Factory>('factories', 'factory', (f) => setData({ data: f }), 'Departments and storage locations are not changed.');
 
     if (loading) return <LoadingBlock />;
     if (error || !data) return <Alert tone="danger">{error ?? 'Factory not found.'}</Alert>;
@@ -40,7 +40,7 @@ export default function FactoryDetailsPage() {
                     </>
                 }
             />
-            {!f.is_active && <Alert tone="warning" className="mb-6">This factory is inactive and cannot receive new departments, warehouses or user assignments.</Alert>}
+            {!f.is_active && <Alert tone="warning" className="mb-6">This factory is inactive and cannot receive new departments, storage locations or user assignments.</Alert>}
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                 <Card className="lg:col-span-2">
@@ -68,7 +68,7 @@ export default function FactoryDetailsPage() {
                     <CardBody className="grid grid-cols-3 gap-3 text-center">
                         {[
                             ['Departments', f.departments_count],
-                            ['Warehouses', f.warehouses_count],
+                            ['Storage locations', locations.data?.meta.total],
                             ['Assigned users', f.users_count],
                         ].map(([label, value]) => (
                             <div key={label as string} className="rounded-md bg-slate-50 p-3">
@@ -106,25 +106,25 @@ export default function FactoryDetailsPage() {
                 </Card>
             )}
 
-            {can('warehouses.view') && (
+            {can('locations.view') && (
                 <Card className="mt-6">
                     <CardHeader
-                        title="Warehouses"
-                        actions={can('warehouses.create') && f.is_active && <ButtonLink size="sm" to={`/factory-setup/warehouses/new?factory_id=${f.id}`} icon={<Plus className="h-4 w-4" />}>Add warehouse</ButtonLink>}
+                        title="Storage locations"
+                        actions={can('locations.create') && f.is_active && <ButtonLink size="sm" to={`/factory-setup/locations/new?factory_id=${f.id}`} icon={<Plus className="h-4 w-4" />}>Add location</ButtonLink>}
                     />
-                    {warehouses.loading ? <LoadingBlock /> : !warehouses.data?.data.length ? (
-                        <EmptyState title="No warehouses" description="Warehouses are set up independently of departments." />
+                    {locations.loading ? <LoadingBlock /> : !locations.data?.data.length ? (
+                        <EmptyState title="No storage locations" description="Add racks, bins and areas where material is kept." />
                     ) : (
                         <Table>
-                            <thead><tr><Th>Code</Th><Th>Warehouse</Th><Th className="hidden md:table-cell">Type</Th><Th className="text-right">Locations</Th><Th>Status</Th></tr></thead>
+                            <thead><tr><Th>Code</Th><Th>Location</Th><Th className="hidden md:table-cell">Type</Th><Th className="hidden md:table-cell">Parent</Th><Th>Status</Th></tr></thead>
                             <tbody className="divide-y divide-slate-100">
-                                {warehouses.data.data.map((w) => (
-                                    <tr key={w.id}>
-                                        <Td className="font-mono text-xs">{w.code}</Td>
-                                        <Td><Link className="font-medium text-brand-700 hover:underline" to={`/factory-setup/warehouses/${w.id}`}>{w.name}</Link></Td>
-                                        <Td className="hidden md:table-cell">{w.type?.name ?? '—'}</Td>
-                                        <Td className="text-right tabular-nums">{w.locations_count}</Td>
-                                        <Td><StatusBadge active={w.is_active} /></Td>
+                                {locations.data.data.map((l) => (
+                                    <tr key={l.id}>
+                                        <Td className="font-mono text-xs">{l.code}</Td>
+                                        <Td><Link className="font-medium text-brand-700 hover:underline" to={`/factory-setup/locations/${l.id}`}>{l.name}</Link></Td>
+                                        <Td className="hidden md:table-cell">{l.type_label}</Td>
+                                        <Td className="hidden md:table-cell">{l.parent?.code ?? '—'}</Td>
+                                        <Td><StatusBadge active={l.is_active} /></Td>
                                     </tr>
                                 ))}
                             </tbody>

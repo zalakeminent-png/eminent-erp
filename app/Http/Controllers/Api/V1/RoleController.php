@@ -157,8 +157,11 @@ class RoleController extends Controller
         }
         $this->guard->ensureNotOwnRole($actor, $role);
 
-        $requested = collect($request->input('permissions'))->unique()->values();
         $current = $role->permissions()->pluck('name');
+        // Permissions of modules hidden from the matrix are kept as they are.
+        $hidden = collect(app(PermissionCatalog::class)->modules())->filter(fn (array $d) => $d['hidden'] ?? false)
+            ->flatMap(fn (array $d, string $key) => array_map(fn ($a) => "{$key}.{$a}", $d['actions']));
+        $requested = collect($request->input('permissions'))->merge($current->intersect($hidden))->unique()->values();
         $added = $requested->diff($current)->values();
         $removed = $current->diff($requested)->values();
 

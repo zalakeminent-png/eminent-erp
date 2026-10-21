@@ -52,7 +52,6 @@ class GoodsReceiptHandler extends DocumentHandler
     public function headerRules(?InventoryDocument $document): array
     {
         return [
-            'warehouse_id' => ['required', 'integer', Rule::exists('warehouses', 'id')->where('is_active', true)],
             'supplier_id' => ['required', 'integer', Rule::exists('business_partners', 'id')],
             'supplier_invoice_number' => ['nullable', 'string', 'max:80'],
             'reference_number' => ['nullable', 'string', 'max:100'],
@@ -68,12 +67,11 @@ class GoodsReceiptHandler extends DocumentHandler
             $this->fail('supplier_id', 'Select an active supplier.');
         }
 
-        return array_map(function (array $line) use ($document) {
+        $locations = [];
+        $prepared = array_map(function (array $line) use (&$locations) {
             $i = $line['_index'];
             $location = $this->location($line['destination_location_id'] ?? null, "lines.{$i}.destination_location_id");
-            if ($location->warehouse_id !== $document->warehouse_id) {
-                $this->fail("lines.{$i}.destination_location_id", 'The location must belong to the receiving warehouse.');
-            }
+            $locations[] = [$location, "lines.{$i}.destination_location_id"];
 
             return [
                 ...$line,
@@ -82,6 +80,9 @@ class GoodsReceiptHandler extends DocumentHandler
                 'unit_cost' => isset($line['unit_cost']) && $line['unit_cost'] !== '' ? $line['unit_cost'] : null,
             ];
         }, $lines);
+        $this->assignFactory($document, $locations);
+
+        return $prepared;
     }
 
     public function movements(string $action, InventoryDocument $document, array $payload): array

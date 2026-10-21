@@ -9,7 +9,6 @@ use App\Models\Inventory\OpeningStockRow;
 use App\Models\MasterData\Item;
 use App\Models\MasterData\UnitOfMeasure;
 use App\Models\User;
-use App\Models\Warehouse;
 use App\Models\WarehouseLocation;
 use App\Services\ActivityLogger;
 use App\Services\MasterData\NumberSequence;
@@ -42,7 +41,6 @@ class OpeningStockService
     public const COLUMNS = [
         'item_code' => ['Item Code', true, ['item', 'item code', 'sku', 'code']],
         'item_name' => ['Item Name (reference only)', false, ['item name', 'name', 'description']],
-        'warehouse_code' => ['Warehouse Code', true, ['warehouse', 'warehouse code', 'store']],
         'location_code' => ['Location Code', true, ['location', 'location code', 'bin', 'rack']],
         'quantity' => ['Quantity', true, ['qty', 'quantity', 'opening quantity', 'opening qty']],
         'uom' => ['UOM', false, ['uom', 'unit', 'unit of measure']],
@@ -264,11 +262,13 @@ class OpeningStockService
     {
         $codes = fn (string $key) => collect($parsed)->pluck($key)->filter()->map(fn ($c) => mb_strtolower($c))->unique()->values();
         $items = Item::query()->with('baseUom')->whereIn(DB::raw('LOWER(code)'), $codes('item_code'))->get()->keyBy(fn ($i) => mb_strtolower($i->code));
-        $warehouses = Warehouse::query()->whereIn(DB::raw('LOWER(code)'), $codes('warehouse_code'))->get()->keyBy(fn ($w) => mb_strtolower($w->code));
-        $locations = WarehouseLocation::query()->whereIn('warehouse_id', $warehouses->pluck('id'))->get()
-            ->keyBy(fn ($l) => $l->warehouse_id.'|'.mb_strtolower($l->code));
-        $uoms = UnitOfMeasure::query()->get()->keyBy(fn ($u) => mb_strtolower($u->code));
         $allowedFactories = $this->scope->factoryIds($user);
+        // Locations are identified by code within the factories the user can access.
+        $locations = WarehouseLocation::query()->with('warehouse')
+            ->whereIn(DB::raw('LOWER(code)'), $codes('location_code'))
+            ->whereHas('warehouse', fn ($w) => $w->when($allowedFactories !== null, fn ($q) => $q->whereIn('factory_id', $allowedFactories ?: [0])))
+            ->get()->groupBy(fn ($l) => mb_strtolower($l->code));
+        $uoms = UnitOfMeasure::query()->get()->keyBy(fn ($u) => mb_strtolower($u->code));
 
         // Identities used by other open/posted imports.
         $pending = OpeningStockRow::query()->where('status', 'accepted')->where('import_id', '!=', $import->id)
@@ -280,8 +280,8 @@ class OpeningStockService
         foreach ($parsed as $number => $raw) {
             $errors = [];
             $item = $items->get(mb_strtolower($raw['item_code']));
-            $warehouse = $warehouses->get(mb_strtolower($raw['warehouse_code']));
-            $location = $warehouse ? $locations->get($warehouse->id.'|'.mb_strtolower($raw['location_code'])) : null;
+            $matches = $locations->get(mb_strtolower($raw['location_code']), collect());
+            $location = $matches->count() === 1 ? $matches->first() : null;
             $status = $raw['stock_status'] !== '' ? strtolower(str_replace([' ', '-'], '_', $raw['stock_status'])) : 'available';
             $uom = $raw['uom'] !== '' ? $uoms->get(mb_strtolower($raw['uom'])) : $item?->baseUom;
             $base = null;
@@ -294,16 +294,13 @@ class OpeningStockService
             } elseif (! $item->is_active || ! $item->is_stock_item || ! $item->track_inventory) {
                 $errors[] = "Item {$item->code} is inactive or not a tracked stock item.";
             }
-            if (! $warehouse) {
-                $errors[] = $raw['warehouse_code'] === '' ? 'Warehouse code is required.' : "Warehouse {$raw['warehouse_code']} does not exist.";
-            } elseif (! $warehouse->is_active) {
-                $errors[] = "Warehouse {$warehouse->code} is inactive.";
-            } elseif ($allowedFactories !== null && ! in_array($warehouse->factory_id, $allowedFactories, true)) {
-                $errors[] = "You do not have access to warehouse {$warehouse->code}.";
-            }
-            if ($warehouse && ! $location) {
-                $errors[] = $raw['location_code'] === '' ? 'Location code is required.' : "Location {$raw['location_code']} does not exist in {$warehouse->code}.";
-            } elseif ($location && ! $location->is_active) {
+            if ($raw['location_code'] === '') {
+                $errors[] = 'Location code is required.';
+            } elseif ($matches->isEmpty()) {
+                $errors[] = "Location {$raw['location_code']} does not exist (or you do not have access to it).";
+            } elseif ($matches->count() > 1) {
+                $errors[] = "Location code {$raw['location_code']} is used more than once; give the locations unique codes.";
+            } elseif (! $location->is_active || ! $location->warehouse->is_active) {
                 $errors[] = "Location {$location->code} is inactive.";
             }
             if (! in_array($status, self::IMPORTABLE_STATUSES, true)) {

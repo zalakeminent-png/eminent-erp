@@ -36,7 +36,7 @@ export default function LocationDetailsPage() {
         try {
             await api.delete(`/locations/${l.id}`);
             toast.success('Location deleted.');
-            navigate(`/factory-setup/warehouses/${l.warehouse_id}`);
+            navigate('/factory-setup/locations');
         } catch (err) {
             toast.error(errorMessage(err));
             setDeleting(false);
@@ -51,7 +51,7 @@ export default function LocationDetailsPage() {
                 title={`${l.code} — ${l.name}`}
                 breadcrumb={
                     <span className="flex flex-wrap items-center gap-1">
-                        <Link to={`/factory-setup/warehouses/${l.warehouse_id}`} className="hover:text-slate-700">{l.warehouse?.name}</Link>
+                        <Link to="/factory-setup/locations" className="hover:text-slate-700">Storage Locations</Link>
                         {data.path.map((p) => (
                             <span key={p.id}> / <Link to={`/factory-setup/locations/${p.id}`} className="font-mono hover:text-slate-700">{p.code}</Link></span>
                         ))}
@@ -59,7 +59,7 @@ export default function LocationDetailsPage() {
                 }
                 actions={
                     <>
-                        {can('locations.create') && l.is_active && <ButtonLink variant="secondary" to={`/factory-setup/locations/new?warehouse_id=${l.warehouse_id}&parent_id=${l.id}`} icon={<Plus className="h-4 w-4" />}>Add child</ButtonLink>}
+                        {can('locations.create') && l.is_active && <ButtonLink variant="secondary" to={`/factory-setup/locations/new?factory_id=${l.factory?.id ?? l.warehouse?.factory_id}&parent_id=${l.id}`} icon={<Plus className="h-4 w-4" />}>Add child</ButtonLink>}
                         {can('locations.delete') && (l.children_count ?? 0) === 0 && (
                             <Button variant="ghost" icon={<Trash2 className="h-4 w-4 text-red-500" />} onClick={() => setDeleting(true)}>Delete</Button>
                         )}
@@ -78,7 +78,7 @@ export default function LocationDetailsPage() {
                         items={[
                             { label: 'Location ID', value: <span className="font-mono">#{l.id}</span> },
                             { label: 'Status', value: <StatusBadge active={l.is_active} /> },
-                            { label: 'Warehouse', value: l.warehouse?.name },
+                            { label: 'Factory', value: l.factory?.name },
                             { label: 'Parent', value: l.parent ? <Link className="text-brand-700 hover:underline" to={`/factory-setup/locations/${l.parent.id}`}>{l.parent.code} — {l.parent.name}</Link> : 'Top level' },
                             { label: 'Type', value: <Badge>{l.type_label}</Badge> },
                             { label: 'Child locations', value: l.children_count ?? 0 },

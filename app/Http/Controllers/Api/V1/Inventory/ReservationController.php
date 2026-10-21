@@ -23,7 +23,7 @@ class ReservationController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = Reservation::query()->with(['item', 'baseUom', 'uom', 'warehouse', 'location.warehouse', 'reservedBy']);
+        $query = Reservation::query()->with(['item', 'baseUom', 'uom', 'warehouse.factory', 'location.warehouse', 'reservedBy']);
         $this->scope->applyByFactory($query, $request->user());
         foreach (['status', 'item_id', 'warehouse_id', 'location_id', 'reference_type'] as $f) {
             if ($request->filled($f)) {
@@ -51,7 +51,7 @@ class ReservationController extends Controller
 
     public function show(Request $request, int $id): JsonResponse
     {
-        $reservation = $this->find($request, $id)->load(['item', 'baseUom', 'uom', 'warehouse', 'location.warehouse', 'reservedBy', 'events.user']);
+        $reservation = $this->find($request, $id)->load(['item', 'baseUom', 'uom', 'warehouse.factory', 'location.warehouse', 'reservedBy', 'events.user']);
 
         return response()->json(['data' => $this->row($reservation) + [
             'events' => $reservation->events->map(fn (ReservationEvent $e) => [
@@ -65,7 +65,8 @@ class ReservationController extends Controller
     {
         $data = $request->validate([
             'item_id' => ['required', 'integer', 'exists:items,id'],
-            'warehouse_id' => ['required', 'integer', 'exists:warehouses,id'],
+            'factory_id' => ['required_without_all:location_id,warehouse_id', 'nullable', 'integer', 'exists:factories,id'],
+            'warehouse_id' => ['nullable', 'integer', 'exists:warehouses,id'],
             'location_id' => ['nullable', 'integer', 'exists:warehouse_locations,id'],
             'quantity' => ['required', 'regex:/^\d{1,14}(\.\d{1,6})?$/', 'not_regex:/^0+(\.0+)?$/'],
             'uom_id' => ['required', 'integer', 'exists:units_of_measure,id'],
@@ -79,7 +80,7 @@ class ReservationController extends Controller
 
         $reservation = $this->reservations->reserve($data, $request->user());
 
-        return response()->json(['data' => $this->row($reservation->load(['item', 'baseUom', 'uom', 'warehouse', 'location.warehouse', 'reservedBy'])), 'message' => "Reservation {$reservation->reservation_number} created."], 201);
+        return response()->json(['data' => $this->row($reservation->load(['item', 'baseUom', 'uom', 'warehouse.factory', 'location.warehouse', 'reservedBy'])), 'message' => "Reservation {$reservation->reservation_number} created."], 201);
     }
 
     public function release(Request $request, int $id): JsonResponse
@@ -91,7 +92,7 @@ class ReservationController extends Controller
         ]);
         $reservation = $this->reservations->release($this->find($request, $id), $data['base_quantity'] ?? null, $data['remarks'] ?? null, $request->user(), (bool) ($data['cancel'] ?? false));
 
-        return response()->json(['data' => $this->row($reservation->load(['item', 'baseUom', 'uom', 'warehouse', 'location.warehouse', 'reservedBy'])), 'message' => 'Reservation updated.']);
+        return response()->json(['data' => $this->row($reservation->load(['item', 'baseUom', 'uom', 'warehouse.factory', 'location.warehouse', 'reservedBy'])), 'message' => 'Reservation updated.']);
     }
 
     private function find(Request $request, int $id): Reservation
@@ -109,6 +110,7 @@ class ReservationController extends Controller
             'reservation_number' => $r->reservation_number,
             'item' => Refs::coded($r->item),
             'warehouse' => Refs::coded($r->warehouse),
+            'factory' => Refs::coded($r->warehouse?->factory),
             'location' => InventoryRefs::location($r->location),
             'quantity' => Refs::decimal($r->quantity),
             'uom' => Refs::uom($r->uom),

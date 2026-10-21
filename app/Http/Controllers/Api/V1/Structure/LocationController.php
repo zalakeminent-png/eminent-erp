@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Structure;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Structure\LocationRequest;
 use App\Http\Resources\Structure\LocationResource;
+use App\Models\Factory;
 use App\Models\Warehouse;
 use App\Models\WarehouseLocation;
 use App\Services\ActivityLogger;
@@ -47,7 +48,7 @@ class LocationController extends Controller
         ]);
 
         $locations = $this->scope->applyToLocations(WarehouseLocation::query(), $request->user())
-            ->with(['warehouse', 'parent'])
+            ->with(['warehouse.factory', 'parent'])
             ->withCount('children')
             ->when($request->boolean('selectable'), fn ($q) => $q->selectable())
             ->when($filters['search'] ?? null, fn ($q, $s) => $q->where(fn ($w) => $w
@@ -196,6 +197,27 @@ class LocationController extends Controller
         ]);
     }
 
+    /** GET /factories/{factory}/locations/tree — all storage locations of a factory. */
+    public function factoryTree(Request $request, Factory $factory): JsonResponse
+    {
+        $this->scope->ensureFactory($request->user(), $factory->id);
+        $status = $request->validate(['status' => ['nullable', Rule::in(['active', 'inactive'])]])['status'] ?? null;
+
+        $locations = WarehouseLocation::query()
+            ->whereIn('warehouse_id', $factory->warehouses()->select('id'))
+            ->when($status, fn ($q) => $q->where('is_active', $status === 'active'))
+            ->get();
+
+        return response()->json([
+            'data' => [
+                'factory' => ['id' => $factory->id, 'code' => $factory->code, 'name' => $factory->name, 'is_active' => $factory->is_active],
+                'max_depth' => $this->hierarchy->maxDepth(),
+                'total' => $locations->count(),
+                'tree' => $this->hierarchy->tree($locations),
+            ],
+        ]);
+    }
+
     private function ensureAccess(Request $request, WarehouseLocation $location): void
     {
         $this->scope->ensureFactory($request->user(), $location->warehouse->factory_id);
@@ -203,6 +225,6 @@ class LocationController extends Controller
 
     private function detail(WarehouseLocation $location): WarehouseLocation
     {
-        return $location->load(['warehouse', 'parent', 'creator'])->loadCount('children');
+        return $location->load(['warehouse.factory', 'parent', 'creator'])->loadCount('children');
     }
 }

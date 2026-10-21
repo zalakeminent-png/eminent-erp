@@ -29,7 +29,8 @@ describe('factory setup navigation', () => {
     it('shows only the factory setup screens the user is permitted to see', () => {
         renderWithAuth(<Sidebar open={false} onClose={() => undefined} />, { user: makeUser(['warehouses.view', 'locations.view']) });
 
-        expect(links()).toEqual(['Warehouses', 'Storage Locations']);
+        // Warehouses are internal and no longer have their own screen.
+        expect(links()).toEqual(['Storage Locations']);
         expect(screen.queryAllByText('Factories')).toHaveLength(0);
         expect(screen.queryAllByText('Departments')).toHaveLength(0);
     });
@@ -39,7 +40,7 @@ describe('factory setup navigation', () => {
             user: makeUser(['factory-structure.view', 'factories.view', 'departments.view', 'warehouses.view', 'locations.view', 'structure-types.view']),
         });
 
-        expect(links()).toEqual(['Structure Overview', 'Factories', 'Departments', 'Warehouses', 'Storage Locations', 'Types']);
+        expect(links()).toEqual(['Structure Overview', 'Factories', 'Departments', 'Storage Locations', 'Types']);
     });
 });
 
@@ -99,7 +100,7 @@ describe('factory list', () => {
 });
 
 describe('factory structure overview', () => {
-    it('renders company, factory, departments, warehouses and locations with counts', async () => {
+    it('renders company, factory, departments and storage locations (no warehouse level)', async () => {
         get.mockResolvedValue({
             data: {
                 data: {
@@ -121,15 +122,16 @@ describe('factory structure overview', () => {
         expect(screen.getAllByText('Eminent Castings').length).toBeGreaterThan(0);
         expect(screen.getByText('Casting')).toBeInTheDocument();
         expect(screen.getByText('Manager: Asha Rao')).toBeInTheDocument();
-        expect(screen.getByText('Raw Material Store')).toBeInTheDocument();
-        expect(screen.getByText('1 dept · 1 wh · 4 loc')).toBeInTheDocument();
+        expect(screen.getByText('RACK-A')).toBeInTheDocument();
+        expect(screen.queryByText('Raw Material Store')).not.toBeInTheDocument();
+        expect(screen.getByText('1 dept · 4 loc')).toBeInTheDocument();
         // No permission to view departments: plain text, not a link.
         expect(screen.queryByRole('link', { name: 'Casting' })).not.toBeInTheDocument();
         // No export permission.
         expect(screen.queryByRole('button', { name: /Export CSV/ })).not.toBeInTheDocument();
 
         await userEvent.click(screen.getByRole('button', { name: 'Collapse Pune Plant' }));
-        expect(screen.queryByText('Raw Material Store')).not.toBeInTheDocument();
+        expect(screen.queryByText('RACK-A')).not.toBeInTheDocument();
     });
 
     it('shows an empty state when nothing is set up', async () => {

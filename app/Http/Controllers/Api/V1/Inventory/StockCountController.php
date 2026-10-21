@@ -24,7 +24,7 @@ class StockCountController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = StockCountSession::query()->with(['warehouse', 'creator', 'approver'])->withCount('lines');
+        $query = StockCountSession::query()->with(['warehouse.factory', 'creator', 'approver'])->withCount('lines');
         $this->scope->applyByFactory($query, $request->user());
         foreach (['status', 'warehouse_id', 'factory_id'] as $f) {
             if ($request->filled($f)) {
@@ -44,7 +44,7 @@ class StockCountController extends Controller
 
     public function show(Request $request, int $id): JsonResponse|BinaryFileResponse
     {
-        $session = $this->find($request, $id)->load(['warehouse', 'creator', 'approver', 'lines.item', 'lines.location.warehouse', 'lines.baseUom', 'lines.counter']);
+        $session = $this->find($request, $id)->load(['warehouse.factory', 'creator', 'approver', 'lines.item', 'lines.location.warehouse', 'lines.baseUom', 'lines.counter']);
 
         if ($format = $request->query('export')) {
             abort_unless($request->user()->can('inventory.reports.export'), 403);
@@ -77,7 +77,8 @@ class StockCountController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'warehouse_id' => ['required', 'integer', 'exists:warehouses,id'],
+            'factory_id' => ['required_without:warehouse_id', 'nullable', 'integer', 'exists:factories,id'],
+            'warehouse_id' => ['nullable', 'integer', 'exists:warehouses,id'],
             'location_ids' => ['nullable', 'array'],
             'location_ids.*' => ['integer'],
             'category_ids' => ['nullable', 'array'],
@@ -89,7 +90,7 @@ class StockCountController extends Controller
         ]);
         $session = $this->counts->create($data, $request->user());
 
-        return response()->json(['data' => $this->header($session->load(['warehouse', 'creator']), $request), 'message' => "Stock count {$session->count_number} created."], 201);
+        return response()->json(['data' => $this->header($session->load(['warehouse.factory', 'creator']), $request), 'message' => "Stock count {$session->count_number} created."], 201);
     }
 
     public function action(Request $request, int $id, string $action): JsonResponse
@@ -112,7 +113,7 @@ class StockCountController extends Controller
             'cancel' => $this->counts->cancel($session, $user),
         };
 
-        return response()->json(['data' => $this->header($session->load(['warehouse', 'creator', 'approver']), $request), 'message' => 'Done.']);
+        return response()->json(['data' => $this->header($session->load(['warehouse.factory', 'creator', 'approver']), $request), 'message' => 'Done.']);
     }
 
     /** Records counted quantities (mobile counting screen). */
@@ -129,7 +130,7 @@ class StockCountController extends Controller
         ]);
         $session = $this->counts->record($this->find($request, $id), $data['entries'], $request->user());
 
-        return response()->json(['data' => $this->header($session->load(['warehouse', 'creator']), $request), 'message' => 'Counts saved.']);
+        return response()->json(['data' => $this->header($session->load(['warehouse.factory', 'creator']), $request), 'message' => 'Counts saved.']);
     }
 
     private function find(Request $request, int $id): StockCountSession
@@ -159,6 +160,7 @@ class StockCountController extends Controller
             'id' => $s->id,
             'count_number' => $s->count_number,
             'warehouse' => Refs::coded($s->warehouse),
+            'factory' => Refs::coded($s->warehouse?->factory),
             'location_ids' => $s->location_ids,
             'category_ids' => $s->category_ids,
             'item_ids' => $s->item_ids,

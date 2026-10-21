@@ -21,6 +21,11 @@ class LocationResource extends JsonResource
                 'factory_id' => $this->warehouse->factory_id,
                 'is_active' => $this->warehouse->is_active,
             ]),
+            'factory' => $this->when($this->relationLoaded('warehouse') && $this->warehouse->relationLoaded('factory'), fn () => [
+                'id' => $this->warehouse->factory->id,
+                'code' => $this->warehouse->factory->code,
+                'name' => $this->warehouse->factory->name,
+            ]),
             'parent_id' => $this->parent_id,
             'parent' => $this->whenLoaded('parent', fn () => $this->parent ? [
                 'id' => $this->parent->id, 'code' => $this->parent->code, 'name' => $this->parent->name,

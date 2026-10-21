@@ -13,6 +13,7 @@ use App\Models\WarehouseLocation;
 use App\Services\ActivityLogger;
 use App\Services\MasterData\NumberSequence;
 use App\Services\MasterData\UomConverter;
+use App\Services\Structure\DefaultWarehouse;
 use App\Services\Structure\StructureScope;
 use App\Support\Decimal;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -46,14 +47,20 @@ class ReservationService
         }
 
         $item = Item::query()->with('baseUom')->findOrFail($data['item_id']);
-        $warehouse = Warehouse::query()->findOrFail($data['warehouse_id']);
-        $this->scope->ensureFactory($user, $warehouse->factory_id);
+        // Warehouses are internal: a reservation is for a location, or for a
+        // factory as a whole (its internal storage area).
         $location = null;
         if (! empty($data['location_id'])) {
             $location = WarehouseLocation::query()->findOrFail($data['location_id']);
-            if ($location->warehouse_id !== $warehouse->id) {
-                throw ValidationException::withMessages(['location_id' => 'The location must belong to the selected warehouse.']);
-            }
+            $warehouse = Warehouse::query()->findOrFail($location->warehouse_id);
+        } elseif (! empty($data['factory_id'])) {
+            $this->scope->ensureFactory($user, (int) $data['factory_id']);
+            $warehouse = app(DefaultWarehouse::class)->for((int) $data['factory_id']);
+        } else {
+            $warehouse = Warehouse::query()->findOrFail($data['warehouse_id'] ?? 0);
+        }
+        $this->scope->ensureFactory($user, $warehouse->factory_id);
+        if ($location) {
             if (! StockQuery::isReservableLocation($location->setRelation('warehouse', $warehouse))) {
                 throw ValidationException::withMessages(['location_id' => "Stock at {$location->code} (QC / rework / rejected / scrap) cannot be reserved."]);
             }
@@ -71,7 +78,7 @@ class ReservationService
                 if (bccomp($converted['quantity'], $atp, 6) > 0) {
                     throw ValidationException::withMessages(['quantity' => sprintf(
                         'Only %s %s of %s is available to reserve%s.',
-                        Decimal::normalize($atp), $item->baseUom->code, $item->code, $location ? " at {$location->code}" : " in {$warehouse->code}",
+                        Decimal::normalize($atp), $item->baseUom->code, $item->code, $location ? " at {$location->code}" : ' in this factory',
                     )]);
                 }
 

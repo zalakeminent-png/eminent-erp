@@ -56,7 +56,6 @@ export default function ItemFormPage() {
     const tree = useApi<{ data: CategoryNode[] }>('/item-categories/tree');
     const grades = useApi<{ data: { id: number; code: string; name: string }[] }>('/material-grades', { all: 1, status: 'active' });
     const attributes = useApi<{ data: (ItemAttribute & { categories?: { id: number; is_required: boolean }[] })[] }>('/item-attributes', { all: 1, status: 'active' });
-    const warehouses = useApi<{ data: { id: number; code: string; name: string }[] }>(can(['warehouses.view', 'locations.view']) ? '/warehouses' : null, { all: 1, status: 'active' });
 
     const [tab, setTab] = useState<Tab>('general');
     const [form, setForm] = useState<FormState>(blank);
@@ -64,7 +63,8 @@ export default function ItemFormPage() {
     const [formError, setFormError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
 
-    const locations = useApi<{ data: { id: number; code: string; name: string }[] }>(form.default_warehouse_id && can('locations.view') ? '/locations' : null, { warehouse_id: form.default_warehouse_id, selectable: 1, per_page: 200 });
+    // Storage locations of all accessible factories (warehouses are internal).
+    const locations = useApi<{ data: { id: number; code: string; name: string; factory?: { name: string } }[] }>(can('locations.view') ? '/locations' : null, { selectable: 1, per_page: 200 });
     const nextCode = useApi<{ data: { mode: string; example_prefix: string; suggested_item_type: string | null } }>(!isEdit && form.category_id ? '/items/next-code' : null, { category_id: form.category_id, material_grade_id: form.material_grade_id || undefined });
 
     useEffect(() => {
@@ -262,16 +262,10 @@ export default function ItemFormPage() {
                         {text('min_stock_level', `Minimum stock${base ? ` (${base.code})` : ''}`, { inputMode: 'decimal' })}
                         {text('max_stock_level', `Maximum stock${base ? ` (${base.code})` : ''}`, { inputMode: 'decimal' })}
                         {text('reorder_level', `Reorder level${base ? ` (${base.code})` : ''}`, { inputMode: 'decimal' })}
-                        {warehouses.data && (
-                            <SelectInput label="Default warehouse" value={form.default_warehouse_id} onChange={(e) => setForm((f) => ({ ...f, default_warehouse_id: e.target.value, default_location_id: '' }))} error={errors.default_warehouse_id}>
-                                <option value="">None</option>
-                                {warehouses.data.data.map((w) => <option key={w.id} value={w.id}>{w.name} ({w.code})</option>)}
-                            </SelectInput>
-                        )}
                         {locations.data && (
-                            <SelectInput label="Default location" value={form.default_location_id} onChange={(e) => set('default_location_id', e.target.value)} error={errors.default_location_id}>
+                            <SelectInput label="Default location" value={form.default_location_id} onChange={(e) => set('default_location_id', e.target.value)} error={errors.default_location_id ?? errors.default_warehouse_id}>
                                 <option value="">None</option>
-                                {locations.data.data.map((l) => <option key={l.id} value={l.id}>{l.code} — {l.name}</option>)}
+                                {locations.data.data.map((l) => <option key={l.id} value={l.id}>{l.code} — {l.name}{l.factory ? ` (${l.factory.name})` : ''}</option>)}
                             </SelectInput>
                         )}
                         <div className="grid grid-cols-1 gap-3 sm:col-span-2 sm:grid-cols-2 lg:col-span-3 lg:grid-cols-4">

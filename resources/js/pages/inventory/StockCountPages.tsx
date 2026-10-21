@@ -17,13 +17,14 @@ import type { PaginationMeta } from '@/types';
 import { filterInputClass, useListParams } from '@/pages/structure/components/ListControls';
 import { ItemPicker, downloadFile, type ItemOption } from '@/pages/master-data/components/shared';
 import type { CodedRef, UomRef } from '@/pages/master-data/types';
-import { DocumentStatusBadge, FieldShell, LocationSelect, Qty, QuantityInput, WarehouseSelect, statusLabel, useLocations } from './components';
+import { DocumentStatusBadge, FactorySelect, FieldShell, LocationSelect, Qty, QuantityInput, statusLabel, useLocations, useSingleFactoryId } from './components';
 import type { LocationRef, UserRef } from './types';
 
 interface CountSession {
     id: number;
     count_number: string;
     warehouse: CodedRef | null;
+    factory: CodedRef | null;
     location_ids: number[] | null;
     status: string;
     lock_locations: boolean;
@@ -74,12 +75,12 @@ export function StockCountListPage() {
                 ) : data ? (
                     <>
                         <Table>
-                            <thead><tr><Th>Count</Th><Th>Warehouse</Th><Th className="hidden md:table-cell">Lines</Th><Th>Status</Th><Th className="hidden md:table-cell">Cutoff</Th><Th className="hidden lg:table-cell">Created by</Th></tr></thead>
+                            <thead><tr><Th>Count</Th><Th>Factory</Th><Th className="hidden md:table-cell">Lines</Th><Th>Status</Th><Th className="hidden md:table-cell">Cutoff</Th><Th className="hidden lg:table-cell">Created by</Th></tr></thead>
                             <tbody className="divide-y divide-slate-100 bg-white">
                                 {data.data.map((s) => (
                                     <tr key={s.id} className="hover:bg-slate-50">
                                         <Td><Link to={`/inventory/stock-counts/${s.id}`} className="font-mono text-xs font-semibold text-slate-900 hover:text-brand-700">{s.count_number}</Link></Td>
-                                        <Td className="text-xs">{s.warehouse?.code} — {s.warehouse?.name}{s.location_ids && <span className="block text-slate-500">{s.location_ids.length} location(s)</span>}</Td>
+                                        <Td className="text-xs">{s.factory?.name}{s.location_ids && <span className="block text-slate-500">{s.location_ids.length} location(s)</span>}</Td>
                                         <Td className="hidden tabular-nums md:table-cell">{s.line_count}</Td>
                                         <Td><DocumentStatusBadge status={s.status} /></Td>
                                         <Td className="hidden text-xs md:table-cell">{formatDateTime(s.cutoff_at)}</Td>
@@ -98,19 +99,21 @@ export function StockCountListPage() {
 }
 
 function CreateCount({ onClose, onCreated }: { onClose: () => void; onCreated: (id: number) => void }) {
-    const [warehouseId, setWarehouseId] = useState('');
+    const singleFactory = useSingleFactoryId();
+    const [chosenFactory, setChosenFactory] = useState('');
+    const factoryId = chosenFactory || singleFactory;
     const [locationIds, setLocationIds] = useState<number[]>([]);
     const [lock, setLock] = useState(true);
     const [remarks, setRemarks] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
-    const locations = useLocations(warehouseId ? { warehouse_id: warehouseId } : null);
+    const locations = useLocations(factoryId ? { factory_id: factoryId } : null);
 
     const save = async () => {
         setSaving(true);
         setError(null);
         try {
-            const { data } = await api.post<{ data: CountSession }>('/inventory/stock-counts', { warehouse_id: warehouseId, location_ids: locationIds, lock_locations: lock, remarks: remarks || null });
+            const { data } = await api.post<{ data: CountSession }>('/inventory/stock-counts', { factory_id: factoryId, location_ids: locationIds, lock_locations: lock, remarks: remarks || null });
             onCreated(data.data.id);
         } catch (err) {
             const fe = fieldErrors(err);
@@ -121,12 +124,12 @@ function CreateCount({ onClose, onCreated }: { onClose: () => void; onCreated: (
     };
 
     return (
-        <Modal open title="New stock count" onClose={onClose} footer={<><Button variant="secondary" onClick={onClose}>Cancel</Button><Button loading={saving} disabled={!warehouseId} onClick={save}>Create</Button></>}>
+        <Modal open title="New stock count" onClose={onClose} footer={<><Button variant="secondary" onClick={onClose}>Cancel</Button><Button loading={saving} disabled={!factoryId} onClick={save}>Create</Button></>}>
             <div className="space-y-4">
                 {error && <Alert tone="danger">{error}</Alert>}
-                <WarehouseSelect required value={warehouseId} onChange={(v) => { setWarehouseId(v); setLocationIds([]); }} />
-                {warehouseId && (
-                    <FieldShell label="Locations" hint="Leave all unticked to count the whole warehouse.">
+                <FactorySelect required value={chosenFactory} onChange={(v) => { setChosenFactory(v); setLocationIds([]); }} />
+                {factoryId && (
+                    <FieldShell label="Locations" hint="Leave all unticked to count every location.">
                         <div className="max-h-48 space-y-1 overflow-auto rounded-md border border-slate-200 p-2">
                             {locations.data?.data.map((l) => (
                                 <label key={l.id} className="flex items-center gap-2 text-sm">
@@ -223,7 +226,7 @@ export function StockCountDetailsPage() {
                 <CardBody>
                     <DescriptionList items={[
                         { label: 'Status', value: <DocumentStatusBadge status={session.status} /> },
-                        { label: 'Warehouse', value: `${session.warehouse?.code} — ${session.warehouse?.name}` },
+                        { label: 'Factory', value: session.factory?.name ?? '—' },
                         { label: 'Cutoff (snapshot)', value: formatDateTime(session.cutoff_at, 'Not started') },
                         { label: 'Location lock', value: session.lock_locations ? 'Locked while counting' : 'Not locked (variance vs. snapshot)' },
                         { label: 'Progress', value: `${counted} of ${session.lines?.length ?? 0} counted · ${variances} variance(s)` },
@@ -304,7 +307,7 @@ function FoundItem({ session, onClose, onSaved }: { session: CountSession; onClo
                 {error && <Alert tone="danger">{error}</Alert>}
                 <p className="text-sm text-slate-600">For stock physically present but not in the system snapshot (system quantity 0).</p>
                 <ItemPicker label="Item" value={item} onChange={setItem} />
-                <LocationSelect required warehouseId={session.warehouse?.id} value={locationId} onChange={setLocationId} />
+                <LocationSelect required factoryId={session.factory?.id} value={locationId} onChange={setLocationId} />
                 <FieldShell label="Counted quantity (base unit)" required><QuantityInput large label="Counted quantity" value={qty} onChange={setQty} /></FieldShell>
             </div>
         </Modal>

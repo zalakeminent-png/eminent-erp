@@ -11,6 +11,7 @@ use App\Models\Warehouse;
 use App\Models\WarehouseLocation;
 use App\Services\ActivityLogger;
 use App\Services\MasterData\NumberSequence;
+use App\Services\Structure\DefaultWarehouse;
 use App\Services\Structure\StructureScope;
 use App\Support\Decimal;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -38,11 +39,21 @@ class StockCountService
 
     public function create(array $data, User $user): StockCountSession
     {
-        $warehouse = Warehouse::query()->findOrFail($data['warehouse_id']);
-        $this->scope->ensureFactory($user, $warehouse->factory_id);
+        // Warehouses are internal: the count covers the factory's storage area,
+        // or the internal area of the selected locations.
         $locationIds = array_values(array_unique(array_map('intval', $data['location_ids'] ?? [])));
+        $firstLocation = $locationIds ? WarehouseLocation::query()->find($locationIds[0]) : null;
+        $warehouse = match (true) {
+            $firstLocation !== null => Warehouse::query()->findOrFail($firstLocation->warehouse_id),
+            ! empty($data['factory_id']) => app(DefaultWarehouse::class)->for((int) $data['factory_id']),
+            default => Warehouse::query()->findOrFail($data['warehouse_id'] ?? 0),
+        };
+        $this->scope->ensureFactory($user, $warehouse->factory_id);
+        if (! empty($data['factory_id']) && $warehouse->factory_id !== (int) $data['factory_id']) {
+            throw ValidationException::withMessages(['location_ids' => 'The locations must belong to the selected factory.']);
+        }
         if ($locationIds && WarehouseLocation::query()->whereKey($locationIds)->where('warehouse_id', $warehouse->id)->count() !== count($locationIds)) {
-            throw ValidationException::withMessages(['location_ids' => 'All locations must belong to the selected warehouse.']);
+            throw ValidationException::withMessages(['location_ids' => 'All locations must belong to the same storage area. Create separate counts if needed.']);
         }
 
         $session = StockCountSession::create([

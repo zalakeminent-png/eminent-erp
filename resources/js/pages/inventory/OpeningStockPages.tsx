@@ -80,7 +80,7 @@ export function OpeningStockListPage() {
 
     return (
         <>
-            <PageHeader title="Opening Stock" description="Load existing stock from Excel. Rows are validated against items, warehouses, locations and units; nothing is posted until the import is approved and posted."
+            <PageHeader title="Opening Stock" description="Load existing stock from Excel. Rows are validated against items, storage locations and units; nothing is posted until the import is approved and posted."
                 actions={<Button variant="secondary" icon={<Download className="h-4 w-4" />} onClick={() => downloadFile('/inventory/opening-stock/template', undefined, 'opening-stock-template.xlsx')}>Template</Button>} />
             {can('inventory.opening-stock.import') && (
                 <Card className="mb-4">
@@ -88,7 +88,7 @@ export function OpeningStockListPage() {
                         <label className={cx('flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-300 p-8 text-center hover:border-brand-400', uploading && 'opacity-60')}>
                             <Upload className="h-8 w-8 text-slate-400" aria-hidden="true" />
                             <span className="text-sm font-medium text-slate-700">{uploading ? 'Uploading…' : 'Upload .xlsx or .csv'}</span>
-                            <span className="text-xs text-slate-500">Columns: Item Code, Item Name (reference), Warehouse Code, Location Code, Stock Status, Quantity, UOM, Unit Cost, Remarks</span>
+                            <span className="text-xs text-slate-500">Columns: Item Code, Item Name (reference), Location Code, Stock Status, Quantity, UOM, Unit Cost, Remarks</span>
                             <input type="file" accept=".xlsx,.csv" className="sr-only" aria-label="Opening stock file" disabled={uploading} onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
                         </label>
                         {uploadError && <Alert tone="danger" className="mt-3">{uploadError}</Alert>}
@@ -221,7 +221,7 @@ export function OpeningStockDetailsPage() {
                                 <tr key={r.id} className={r.status === 'rejected' ? 'bg-red-50/40' : undefined}>
                                     <Td className="text-xs tabular-nums">{r.row_number}</Td>
                                     <Td className="text-xs"><span className="font-mono font-semibold">{r.item?.code ?? r.raw.item_code}</span><span className="block text-slate-500">{r.item?.name ?? r.raw.item_name}</span></Td>
-                                    <Td className="hidden text-xs md:table-cell">{r.location ? `${r.location.warehouse_code}/${r.location.code}` : `${r.raw.warehouse_code}/${r.raw.location_code}`}</Td>
+                                    <Td className="hidden text-xs md:table-cell">{r.location?.code ?? r.raw.location_code}</Td>
                                     <Td className="hidden text-xs sm:table-cell">{statusLabel(r.stock_status ?? r.raw.stock_status ?? 'available')}</Td>
                                     <Td className="text-right"><Qty value={r.quantity ?? r.raw.quantity} uom={r.uom?.code ?? r.raw.uom} /></Td>
                                     <Td className="hidden text-right lg:table-cell"><Qty value={r.base_quantity} /></Td>

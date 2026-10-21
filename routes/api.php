@@ -103,6 +103,7 @@ Route::prefix('v1')->group(function () {
             Route::patch('{warehouse}/status', 'updateStatus')->middleware('permission:warehouses.update|warehouses.deactivate');
         });
         Route::get('warehouses/{warehouse}/locations/tree', [LocationController::class, 'tree'])->middleware('permission:locations.view');
+        Route::get('factories/{factory}/locations/tree', [LocationController::class, 'factoryTree'])->middleware('permission:locations.view');
 
         Route::controller(LocationController::class)->prefix('locations')->group(function () {
             Route::get('/', 'index')->middleware('permission:locations.view');

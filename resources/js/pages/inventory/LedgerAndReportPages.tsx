@@ -41,10 +41,10 @@ export function LedgerPage() {
     const [search, setSearch] = useState(list.get('search'));
     const debounced = useDebouncedValue(search);
     const lookups = useLookups();
-    const locations = useLocations(list.get('warehouse_id') ? { warehouse_id: list.get('warehouse_id'), include_inactive: 1 } : null);
+    const locations = useLocations({ factory_id: list.get('factory_id') || undefined, include_inactive: 1 });
     const exporter = useExport();
     const params = {
-        search: debounced, item_id: list.get('item_id'), warehouse_id: list.get('warehouse_id'), location_id: list.get('location_id'),
+        search: debounced, item_id: list.get('item_id'), factory_id: list.get('factory_id'), location_id: list.get('location_id'),
         transaction_type: list.get('transaction_type'), status: list.get('status'), department_id: list.get('department_id'),
         date_from: list.get('date_from'), date_to: list.get('date_to'), order: list.direction,
     };
@@ -59,11 +59,11 @@ export function LedgerPage() {
             <Card>
                 <FilterBar>
                     <SearchInput value={search} onChange={(v) => { setSearch(v); list.update({ search: v }); }} placeholder="Search item or location" />
-                    <select aria-label="Warehouse" value={list.get('warehouse_id')} onChange={(e) => list.update({ warehouse_id: e.target.value, location_id: '' })} className={filterInputClass}>
-                        <option value="">All warehouses</option>
-                        {lookups.data?.data.warehouses.map((w) => <option key={w.id} value={w.id}>{w.code}</option>)}
+                    <select aria-label="Factory" value={list.get('factory_id')} onChange={(e) => list.update({ factory_id: e.target.value, location_id: '' })} className={filterInputClass}>
+                        <option value="">All factories</option>
+                        {lookups.data?.data.factories.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
                     </select>
-                    <select aria-label="Location" value={list.get('location_id')} disabled={!list.get('warehouse_id')} onChange={(e) => list.update({ location_id: e.target.value })} className={filterInputClass}>
+                    <select aria-label="Location" value={list.get('location_id')} onChange={(e) => list.update({ location_id: e.target.value })} className={filterInputClass}>
                         <option value="">All locations</option>
                         {locations.data?.data.map((l) => <option key={l.id} value={l.id}>{l.code}</option>)}
                     </select>
@@ -105,7 +105,7 @@ export function LedgerPage() {
                                         <Td className="whitespace-nowrap text-xs">{formatDateTime(r.posted_at)}</Td>
                                         <Td className="text-xs"><span className="font-mono font-semibold">{r.transaction_number}</span><span className="block text-slate-500">{humanize(r.transaction_type)}{r.reversal_of_id ? ' (reversal)' : ''}</span></Td>
                                         <Td className="text-xs"><Link to={`/inventory/stock/${r.item?.id}`} className="font-mono font-semibold text-slate-900 hover:text-brand-700">{r.item?.code}</Link><span className="block text-slate-500">{r.item?.name}</span></Td>
-                                        <Td className="hidden text-xs md:table-cell">{r.location?.warehouse_code}/{r.location?.code}</Td>
+                                        <Td className="hidden text-xs md:table-cell">{r.location?.code}</Td>
                                         <Td className="hidden sm:table-cell"><StockStatusBadge status={r.stock_status} /></Td>
                                         <Td className="text-right text-emerald-700">{r.quantity_in ? <Qty value={r.quantity_in} /> : ''}</Td>
                                         <Td className="text-right text-red-600">{r.quantity_out ? <Qty value={r.quantity_out} /> : ''}</Td>
@@ -138,7 +138,7 @@ export function ReportsPage() {
     const { can } = useAuth();
     const [params, setParams] = useSearchParams();
     const report = params.get('report') ?? 'current-stock';
-    const [filters, setFilters] = useState({ search: '', warehouse_id: '', category_id: '', status: '', date_from: '', date_to: '' });
+    const [filters, setFilters] = useState({ search: '', factory_id: '', category_id: '', status: '', date_from: '', date_to: '' });
     const [page, setPage] = useState(1);
     const debouncedSearch = useDebouncedValue(filters.search);
     const list = useApi<{ data: { key: string; label: string }[] }>('/inventory/reports');
@@ -175,9 +175,9 @@ export function ReportsPage() {
                     </div>
                     <FilterBar>
                         <SearchInput value={filters.search} onChange={(v) => set('search', v)} placeholder="Search item / document" />
-                        <select aria-label="Warehouse" value={filters.warehouse_id} onChange={(e) => set('warehouse_id', e.target.value)} className={filterInputClass}>
-                            <option value="">All warehouses</option>
-                            {lookups.data?.data.warehouses.map((w) => <option key={w.id} value={w.id}>{w.code}</option>)}
+                        <select aria-label="Factory" value={filters.factory_id} onChange={(e) => set('factory_id', e.target.value)} className={filterInputClass}>
+                            <option value="">All factories</option>
+                            {lookups.data?.data.factories.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
                         </select>
                         <select aria-label="Category" value={filters.category_id} onChange={(e) => set('category_id', e.target.value)} className={filterInputClass}>
                             <option value="">All categories</option>

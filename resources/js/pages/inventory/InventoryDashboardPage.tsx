@@ -36,11 +36,11 @@ function Stat({ label, value, hint }: { label: string; value: React.ReactNode; h
 
 export default function InventoryDashboardPage() {
     const lookups = useLookups();
-    const [filters, setFilters] = useState({ factory_id: '', department_id: '', warehouse_id: '', location_id: '', category_id: '', date_from: '', date_to: '' });
-    const locations = useLocations({ warehouse_id: filters.warehouse_id || undefined });
+    const [filters, setFilters] = useState({ factory_id: '', department_id: '', location_id: '', category_id: '', date_from: '', date_to: '' });
+    const locations = useLocations({ factory_id: filters.factory_id || undefined });
     const categories = useApi<{ data: { id: number; code: string; name: string }[] }>('/item-categories', { all: 1 });
     const { data, loading, error } = useApi<{ data: Dashboard }>('/inventory/dashboard', filters);
-    const set = (key: keyof typeof filters, value: string) => setFilters((f) => ({ ...f, [key]: value, ...(key === 'warehouse_id' ? { location_id: '' } : {}) }));
+    const set = (key: keyof typeof filters, value: string) => setFilters((f) => ({ ...f, [key]: value, ...(key === 'factory_id' ? { location_id: '' } : {}) }));
     const d = data?.data;
     const money = (v: string) => formatQty(Number(v).toFixed(2));
 
@@ -48,7 +48,7 @@ export default function InventoryDashboardPage() {
         <>
             <PageHeader title="Inventory Dashboard" description="Live figures from posted stock. Quantities are grouped by unit and never added across different units; values include only stock with recorded costs." />
             <Card className="mb-4">
-                <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+                <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                     <select aria-label="Factory" value={filters.factory_id} onChange={(e) => set('factory_id', e.target.value)} className={filterInputClass}>
                         <option value="">All factories</option>
                         {lookups.data?.data.factories.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
@@ -57,13 +57,9 @@ export default function InventoryDashboardPage() {
                         <option value="">All departments</option>
                         {lookups.data?.data.departments.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
                     </select>
-                    <select aria-label="Warehouse" value={filters.warehouse_id} onChange={(e) => set('warehouse_id', e.target.value)} className={filterInputClass}>
-                        <option value="">All warehouses</option>
-                        {lookups.data?.data.warehouses.map((w) => <option key={w.id} value={w.id}>{w.code} — {w.name}</option>)}
-                    </select>
                     <select aria-label="Location" value={filters.location_id} onChange={(e) => set('location_id', e.target.value)} className={filterInputClass}>
                         <option value="">All locations</option>
-                        {locations.data?.data.map((l) => <option key={l.id} value={l.id}>{filters.warehouse_id ? l.code : `${l.warehouse_code} / ${l.code}`}</option>)}
+                        {locations.data?.data.map((l) => <option key={l.id} value={l.id}>{l.code} — {l.name}</option>)}
                     </select>
                     <select aria-label="Item category" value={filters.category_id} onChange={(e) => set('category_id', e.target.value)} className={filterInputClass}>
                         <option value="">All categories</option>

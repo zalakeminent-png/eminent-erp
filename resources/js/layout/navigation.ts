@@ -1,7 +1,7 @@
 import {
     ArrowLeftRight, BookOpen, Boxes, Building, Building2, ClipboardCheck, ClipboardList, Cog, Database, Factory, FileBarChart, FileSpreadsheet,
     FolderTree, GitBranch, Gauge, History, LayoutDashboard, Layers, ListTree, Lock, MapPin, Network, Package, PackageCheck, PackageMinus,
-    PackageOpen, Ruler, Settings, ShieldCheck, SlidersHorizontal, Tags, Trash2, Undo2, Users, Warehouse, Workflow, Wrench,
+    PackageOpen, Ruler, Settings, ShieldCheck, SlidersHorizontal, Tags, Trash2, Undo2, Users, Workflow, Wrench,
     type LucideIcon,
 } from 'lucide-react';
 
@@ -48,7 +48,7 @@ export const navigation: NavItem[] = [
         ],
     },
     {
-        label: 'Inventory & Warehouse',
+        label: 'Inventory',
         icon: Package,
         children: [
             { label: 'Dashboard', to: '/inventory', icon: Gauge, permission: 'inventory.dashboard.view', end: true },
@@ -77,7 +77,6 @@ export const navigation: NavItem[] = [
             { label: 'Structure Overview', to: '/factory-setup/structure', icon: Network, permission: 'factory-structure.view' },
             { label: 'Factories', to: '/factory-setup/factories', icon: Factory, permission: 'factories.view' },
             { label: 'Departments', to: '/factory-setup/departments', icon: Building, permission: 'departments.view' },
-            { label: 'Warehouses', to: '/factory-setup/warehouses', icon: Warehouse, permission: 'warehouses.view' },
             { label: 'Storage Locations', to: '/factory-setup/locations', icon: MapPin, permission: 'locations.view' },
             { label: 'Types', to: '/factory-setup/types', icon: Tags, permission: 'structure-types.view' },
         ],

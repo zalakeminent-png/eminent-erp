@@ -17,11 +17,11 @@ import type { ReasonCode } from './types';
 
 const CATEGORIES = ['scrap', 'rejection', 'adjustment', 'return', 'qc', 'transfer', 'general'];
 
-/** Reason codes and stock purposes of warehouses / locations. */
+/** Reason codes and stock purposes of storage locations. */
 export default function InventorySettingsPage() {
     return (
         <>
-            <PageHeader title="Inventory Settings" description="Configurable reason codes and the stock purpose of each warehouse and location (used for WIP, QC and scrap rules)." />
+            <PageHeader title="Inventory Settings" description="Configurable reason codes and the stock purpose of each storage location (used for WIP, QC and scrap rules)." />
             <div className="grid gap-4 xl:grid-cols-2">
                 <ReasonCodes />
                 <Purposes />
@@ -98,57 +98,49 @@ function ReasonCodes() {
 function Purposes() {
     const toast = useToast();
     const lookups = useLookups();
-    const [warehouseId, setWarehouseId] = useState('');
-    const locations = useLocations(warehouseId ? { warehouse_id: warehouseId, include_inactive: 1 } : null);
+    const [factoryId, setFactoryId] = useState('');
+    const locations = useLocations({ factory_id: factoryId || undefined, include_inactive: 1 });
     const purposes = lookups.data?.data.stock_purposes ?? [];
+    const factories = lookups.data?.data.factories ?? [];
 
-    const save = async (kind: 'warehouses' | 'locations', id: number, value: string) => {
+    const save = async (id: number, value: string) => {
         try {
-            await api.put(`/inventory/${kind}/${id}/purpose`, { stock_purpose: value || null });
+            await api.put(`/inventory/locations/${id}/purpose`, { stock_purpose: value || null });
             toast.success('Stock purpose saved.');
-            lookups.reload();
             locations.reload();
         } catch (err) {
             toast.error(errorMessage(err));
         }
     };
 
-    const options = (inheritLabel: string) => (
-        <>
-            <option value="">{inheritLabel}</option>
-            {purposes.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
-        </>
-    );
-
     return (
         <Card>
-            <CardHeader title="Stock purpose" description="Locations inherit their warehouse’s purpose unless set. Material issues must go to Production / WIP locations." />
-            <Table>
-                <thead><tr><Th>Warehouse</Th><Th>Purpose</Th><Th><span className="sr-only">Locations</span></Th></tr></thead>
-                <tbody className="divide-y divide-slate-100 bg-white">
-                    {lookups.data?.data.warehouses.map((w) => (
-                        <tr key={w.id}>
-                            <Td className="text-xs"><span className="font-mono font-semibold">{w.code}</span> {w.name}</Td>
-                            <Td><select aria-label={`Purpose of ${w.code}`} value={w.stock_purpose ?? ''} onChange={(e) => save('warehouses', w.id, e.target.value)} className={`${filterInputClass} h-9`}>{options('General storage (default)')}</select></Td>
-                            <Td className="text-right"><Button variant="ghost" size="sm" onClick={() => setWarehouseId(String(w.id))}>Locations</Button></Td>
-                        </tr>
-                    ))}
-                </tbody>
-            </Table>
-            {warehouseId && (
-                <div className="border-t border-slate-200">
-                    <p className="px-4 pt-3 text-sm font-medium text-slate-700">Locations of {lookups.data?.data.warehouses.find((w) => String(w.id) === warehouseId)?.code}</p>
-                    <Table>
-                        <tbody className="divide-y divide-slate-100 bg-white">
-                            {locations.data?.data.map((l) => (
-                                <tr key={l.id}>
-                                    <Td className="text-xs"><span className="font-mono font-semibold">{l.code}</span> {l.name}</Td>
-                                    <Td><select aria-label={`Purpose of ${l.code}`} value={l.stock_purpose ?? ''} onChange={(e) => save('locations', l.id, e.target.value)} className={`${filterInputClass} h-9`}>{options(`Inherit (${humanize(l.purpose)})`)}</select></Td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </Table>
-                </div>
+            <CardHeader title="Stock purpose of locations" description="What each storage location is used for. Material issues must go to Production / WIP locations; QC, rejected and scrap locations cannot be reserved."
+                actions={factories.length > 1 && (
+                    <select aria-label="Factory" value={factoryId} onChange={(e) => setFactoryId(e.target.value)} className={`${filterInputClass} h-9`}>
+                        <option value="">All factories</option>
+                        {factories.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+                    </select>
+                )} />
+            {locations.loading && !locations.data ? <LoadingBlock /> : !locations.data?.data.length ? (
+                <p className="px-4 pb-4 text-sm text-slate-500">No storage locations yet. Add them under Factory Setup → Storage Locations.</p>
+            ) : (
+                <Table>
+                    <thead><tr><Th>Location</Th><Th>Purpose</Th></tr></thead>
+                    <tbody className="divide-y divide-slate-100 bg-white">
+                        {locations.data.data.map((l) => (
+                            <tr key={l.id}>
+                                <Td className="text-xs"><span className="font-mono font-semibold">{l.code}</span> {l.name}</Td>
+                                <Td>
+                                    <select aria-label={`Purpose of ${l.code}`} value={l.stock_purpose ?? ''} onChange={(e) => save(l.id, e.target.value)} className={`${filterInputClass} h-9`}>
+                                        <option value="">Default ({humanize(l.purpose)})</option>
+                                        {purposes.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+                                    </select>
+                                </Td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </Table>
             )}
         </Card>
     );

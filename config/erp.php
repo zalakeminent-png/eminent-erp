@@ -71,6 +71,8 @@ return [
             'label' => 'Warehouses',
             'group' => 'Factory Setup',
             'actions' => ['view', 'create', 'update', 'deactivate'],
+            // Warehouses are internal (one storage area per factory) and not managed in the UI.
+            'hidden' => true,
         ],
         'locations' => [
             'label' => 'Storage Locations',

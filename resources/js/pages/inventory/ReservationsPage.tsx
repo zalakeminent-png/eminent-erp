@@ -16,7 +16,7 @@ import type { PaginationMeta } from '@/types';
 import { FilterBar, SearchInput, filterInputClass, useListParams } from '@/pages/structure/components/ListControls';
 import { ItemPicker, type ItemOption } from '@/pages/master-data/components/shared';
 import type { CodedRef, UomRef } from '@/pages/master-data/types';
-import { DocumentStatusBadge, FieldShell, LocationSelect, Qty, QuantityInput, StockAvailability, UomSelect, WarehouseSelect, requestKey } from './components';
+import { DocumentStatusBadge, FactorySelect, FieldShell, LocationSelect, Qty, QuantityInput, StockAvailability, UomSelect, requestKey, useSingleFactoryId } from './components';
 import type { LocationRef, UserRef } from './types';
 
 interface Reservation {
@@ -24,6 +24,7 @@ interface Reservation {
     reservation_number: string;
     item: CodedRef | null;
     warehouse: CodedRef | null;
+    factory: CodedRef | null;
     location: LocationRef | null;
     quantity: string;
     uom: UomRef | null;
@@ -77,7 +78,7 @@ export default function ReservationsPage() {
                                     <tr key={r.id}>
                                         <Td className="font-mono text-xs font-semibold">{r.reservation_number}</Td>
                                         <Td className="text-xs"><span className="font-mono font-semibold">{r.item?.code}</span><span className="block text-slate-500">{r.item?.name}</span></Td>
-                                        <Td className="hidden text-xs md:table-cell">{r.warehouse?.code}{r.location ? `/${r.location.code}` : ' (any location)'}</Td>
+                                        <Td className="hidden text-xs md:table-cell">{r.location ? `${r.location.code} — ${r.location.name}` : `Any location (${r.factory?.name ?? ''})`}</Td>
                                         <Td className="text-right"><Qty value={r.open_base_quantity} uom={r.base_uom?.code} /><span className="block text-xs text-slate-500">of {r.base_quantity}</span></Td>
                                         <Td className="hidden text-xs lg:table-cell">{humanize(r.reference_type)} {r.reference_number}</Td>
                                         <Td><DocumentStatusBadge status={r.status} /></Td>
@@ -103,8 +104,9 @@ export default function ReservationsPage() {
 
 function CreateReservation({ onClose, onSaved }: { onClose: () => void; onSaved: (number: string) => void }) {
     const [item, setItem] = useState<ItemOption | null>(null);
-    const [form, setForm] = useState({ warehouse_id: '', location_id: '', quantity: '', uom_id: '', reference_type: 'manual', reference_number: '', expires_on: '', remarks: '' });
+    const [form, setForm] = useState({ factory_id: '', location_id: '', quantity: '', uom_id: '', reference_type: 'manual', reference_number: '', expires_on: '', remarks: '' });
     const [key] = useState(requestKey());
+    const singleFactory = useSingleFactoryId();
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [message, setMessage] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
@@ -116,7 +118,7 @@ function CreateReservation({ onClose, onSaved }: { onClose: () => void; onSaved:
         setMessage(null);
         try {
             const { data } = await api.post<{ data: Reservation }>('/inventory/reservations', {
-                ...form, item_id: item?.id, uom_id: form.uom_id || item?.base_uom?.id, location_id: form.location_id || null, expires_on: form.expires_on || null, idempotency_key: key,
+                ...form, factory_id: form.factory_id || singleFactory || null, item_id: item?.id, uom_id: form.uom_id || item?.base_uom?.id, location_id: form.location_id || null, expires_on: form.expires_on || null, idempotency_key: key,
             });
             onSaved(data.data.reservation_number);
         } catch (err) {
@@ -133,8 +135,8 @@ function CreateReservation({ onClose, onSaved }: { onClose: () => void; onSaved:
             <div className="space-y-4">
                 {message && <Alert tone="danger">{message}</Alert>}
                 <ItemPicker label="Item" value={item} onChange={(i) => { setItem(i); set('uom_id', i?.base_uom ? String(i.base_uom.id) : ''); }} error={errors.item_id} />
-                <WarehouseSelect required value={form.warehouse_id} onChange={(v) => { set('warehouse_id', v); set('location_id', ''); }} error={errors.warehouse_id} />
-                <LocationSelect label="Location (optional)" placeholder="Any location in the warehouse" warehouseId={form.warehouse_id || undefined} value={form.location_id} onChange={(v) => set('location_id', v)} error={errors.location_id} />
+                <FactorySelect required value={form.factory_id} onChange={(v) => { set('factory_id', v); set('location_id', ''); }} error={errors.factory_id} />
+                <LocationSelect label="Location (optional)" placeholder="Any location in the factory" factoryId={form.factory_id || undefined} value={form.location_id} onChange={(v) => set('location_id', v)} error={errors.location_id} />
                 <div className="grid grid-cols-3 gap-3">
                     <div className="col-span-2">
                         <FieldShell label="Quantity" required error={errors.quantity}><QuantityInput large label="Quantity" value={form.quantity} onChange={(v) => set('quantity', v)} /></FieldShell>

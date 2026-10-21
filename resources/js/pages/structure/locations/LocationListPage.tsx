@@ -9,7 +9,7 @@ import { ButtonLink } from '@/components/ui/Button';
 import { Pagination, SortableTh, Table, Td, Th } from '@/components/ui/Table';
 import { LoadingBlock } from '@/components/ui/Spinner';
 import type { Paginated } from '@/types';
-import { LOCATION_TYPES, type Location, type Warehouse } from '../types';
+import { LOCATION_TYPES, type Factory, type Location } from '../types';
 import { FilterBar, SearchInput, filterInputClass, useListParams } from '../components/ListControls';
 import { ViewSwitch } from './ViewSwitch';
 
@@ -21,16 +21,16 @@ export default function LocationListPage() {
     const debounced = useDebouncedValue(search);
 
     const { data, loading, error } = useApi<Paginated<Location>>('/locations', {
-        search: debounced, warehouse_id: list.get('warehouse_id'), type: list.get('type'), status: list.get('status'),
+        search: debounced, factory_id: list.get('factory_id'), type: list.get('type'), status: list.get('status'),
         is_virtual: list.get('is_virtual'), sort: list.sort, direction: list.direction, page: list.page, per_page: 25,
     });
-    const warehouses = useApi<{ data: Warehouse[] }>('/warehouses', { all: 1 });
+    const factories = useApi<{ data: Factory[] }>('/factories', { all: 1 });
 
     return (
         <>
             <PageHeader
                 title="Storage Locations"
-                description="Zones, racks, shelves and bins inside warehouses. Configuration only — no stock quantities."
+                description="Zones, racks, shelves and bins in each factory. Configuration only — no stock quantities."
                 actions={
                     <>
                         <ViewSwitch current="table" />
@@ -41,9 +41,9 @@ export default function LocationListPage() {
             <Card>
                 <FilterBar>
                     <SearchInput value={search} onChange={(v) => { setSearch(v); list.update({ search: v }); }} placeholder="Search code or name" />
-                    <select aria-label="Filter by warehouse" value={list.get('warehouse_id')} onChange={(e) => list.update({ warehouse_id: e.target.value })} className={filterInputClass}>
-                        <option value="">All warehouses</option>
-                        {warehouses.data?.data.map((w) => <option key={w.id} value={w.id}>{w.name} ({w.factory?.code})</option>)}
+                    <select aria-label="Filter by factory" value={list.get('factory_id')} onChange={(e) => list.update({ factory_id: e.target.value })} className={filterInputClass}>
+                        <option value="">All factories</option>
+                        {factories.data?.data.map((f) => <option key={f.id} value={f.id}>{f.name} ({f.code})</option>)}
                     </select>
                     <select aria-label="Filter by type" value={list.get('type')} onChange={(e) => list.update({ type: e.target.value })} className={filterInputClass}>
                         <option value="">All types</option>
@@ -73,7 +73,7 @@ export default function LocationListPage() {
                                 <tr>
                                     <SortableTh label="Code" field="code" sort={list.sort} direction={list.direction} onSort={list.onSort} />
                                     <SortableTh label="Name" field="name" sort={list.sort} direction={list.direction} onSort={list.onSort} />
-                                    <Th className="hidden md:table-cell">Warehouse</Th>
+                                    <Th className="hidden md:table-cell">Factory</Th>
                                     <Th className="hidden lg:table-cell">Parent</Th>
                                     <SortableTh label="Type" field="type" sort={list.sort} direction={list.direction} onSort={list.onSort} className="hidden sm:table-cell" />
                                     <SortableTh label="Status" field="is_active" sort={list.sort} direction={list.direction} onSort={list.onSort} />
@@ -88,7 +88,7 @@ export default function LocationListPage() {
                                             <Link to={`/factory-setup/locations/${l.id}`} className="font-medium text-slate-900 hover:text-brand-700">{l.name}</Link>
                                             {l.is_virtual && <Badge tone="info" className="ml-2"><CloudOff className="mr-1 h-3 w-3" />Virtual</Badge>}
                                         </Td>
-                                        <Td className="hidden md:table-cell">{l.warehouse?.name}</Td>
+                                        <Td className="hidden md:table-cell">{l.factory?.name}</Td>
                                         <Td className="hidden font-mono text-xs lg:table-cell">{l.parent?.code ?? '—'}</Td>
                                         <Td className="hidden sm:table-cell"><Badge>{l.type_label}</Badge></Td>
                                         <Td><StatusBadge active={l.is_active} /></Td>

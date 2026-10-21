@@ -55,7 +55,7 @@ export function useLookups() {
 }
 
 export function useLocations(params: Record<string, unknown> | null) {
-    return useApi<{ data: (LocationRef & { stock_purpose: string | null; is_active: boolean })[] }>(params ? '/inventory/lookups/locations' : null, params ?? undefined);
+    return useApi<{ data: (LocationRef & { stock_purpose: string | null; is_active: boolean; factory_id: number })[] }>(params ? '/inventory/lookups/locations' : null, params ?? undefined);
 }
 
 export function useReasonCodes(category?: string) {
@@ -83,39 +83,50 @@ export function FieldShell({ label, error, required, children, hint }: { label: 
     );
 }
 
-export function WarehouseSelect({ value, onChange, label = 'Warehouse', error, required, allowAll, disabled }: {
-    value: number | string | null | undefined; onChange: (id: string) => void; label?: string; error?: string; required?: boolean; allowAll?: string; disabled?: boolean;
+/** The user's only active factory (as a string id), or '' when there are several. */
+export function useSingleFactoryId(): string {
+    const { data } = useLookups();
+    const active = (data?.data.factories ?? []).filter((f) => f.is_active);
+    return active.length === 1 ? String(active[0].id) : '';
+}
+
+/**
+ * Factory selector. Warehouses are internal, so stock is organised by factory
+ * and location. Hidden when the user has access to only one factory (unless
+ * `alwaysShow`), since there is nothing to choose.
+ */
+export function FactorySelect({ value, onChange, label = 'Factory', error, required, allowAll, alwaysShow }: {
+    value: number | string | null | undefined; onChange: (id: string) => void; label?: string; error?: string; required?: boolean; allowAll?: string; alwaysShow?: boolean;
 }) {
     const { data } = useLookups();
+    const factories = (data?.data.factories ?? []).filter((f) => f.is_active || String(f.id) === String(value));
+    if (!alwaysShow && factories.length <= 1) return null;
     return (
         <FieldShell label={label} error={error} required={required}>
-            <select aria-label={label} value={value ?? ''} disabled={disabled} onChange={(e) => onChange(e.target.value)} className={selectClass(error, true)}>
-                <option value="">{allowAll ?? 'Select warehouse'}</option>
-                {data?.data.warehouses.filter((w) => w.is_active || String(w.id) === String(value)).map((w) => (
-                    <option key={w.id} value={w.id}>{w.code} — {w.name}</option>
-                ))}
+            <select aria-label={label} value={value ?? ''} onChange={(e) => onChange(e.target.value)} className={selectClass(error, true)}>
+                <option value="">{allowAll ?? 'Select factory'}</option>
+                {factories.map((f) => <option key={f.id} value={f.id}>{f.name} ({f.code})</option>)}
             </select>
         </FieldShell>
     );
 }
 
-/** Location selector (optionally limited to a warehouse and/or stock purposes). */
-export function LocationSelect({ value, onChange, label = 'Location', warehouseId, purpose, error, required, compact, placeholder, disabled }: {
+/** Storage location selector (optionally limited to a factory and/or stock purposes). */
+export function LocationSelect({ value, onChange, label = 'Location', factoryId, purpose, error, required, compact, placeholder, disabled }: {
     value: number | string | null | undefined; onChange: (id: string, location?: LocationRef) => void; label?: string;
-    warehouseId?: number | string | null; purpose?: string; error?: string; required?: boolean; compact?: boolean; placeholder?: string; disabled?: boolean;
+    factoryId?: number | string | null; purpose?: string; error?: string; required?: boolean; compact?: boolean; placeholder?: string; disabled?: boolean;
 }) {
-    const { data, loading } = useLocations({ warehouse_id: warehouseId || undefined, purpose });
+    const { data, loading } = useLocations({ factory_id: factoryId || undefined, purpose });
     const select = (
         <select aria-label={label} value={value ?? ''} disabled={disabled} onChange={(e) => onChange(e.target.value, data?.data.find((l) => String(l.id) === e.target.value))}
             className={compact ? cx('h-9 w-full rounded-md border bg-white px-2 text-sm', error ? 'border-red-400' : 'border-slate-300') : selectClass(error, true)}>
             <option value="">{loading ? 'Loading…' : placeholder ?? 'Select location'}</option>
-            {data?.data.map((l) => <option key={l.id} value={l.id}>{l.warehouse_code} / {l.code} — {l.name}</option>)}
+            {data?.data.map((l) => <option key={l.id} value={l.id}>{l.code} — {l.name}</option>)}
         </select>
     );
     if (compact) return <div>{select}{error && <p className="mt-1 text-xs text-red-600">{error}</p>}</div>;
     return <FieldShell label={label} error={error} required={required}>{select}</FieldShell>;
 }
-
 export function UomSelect({ value, onChange, baseUomId, error, label = 'UOM' }: { value: number | string | null | undefined; onChange: (id: string) => void; baseUomId?: number | null; error?: string; label?: string }) {
     const { data } = useUoms();
     const uoms = [...(data?.data ?? [])].sort((a, b) => (a.id === baseUomId ? -1 : b.id === baseUomId ? 1 : a.code.localeCompare(b.code)));
@@ -276,7 +287,7 @@ export function MovementHistory({ rows }: { rows: LedgerRow[] }) {
                                 {inbound ? '+' : '−'}<Qty value={r.quantity_in ?? r.quantity_out} uom={r.uom?.code} /> <span className="font-normal text-slate-500">{r.item?.code}</span>
                             </p>
                             <p className="text-xs text-slate-500">
-                                {r.location?.warehouse_code}/{r.location?.code} · {statusLabel(r.stock_status)} · {humanize(r.transaction_type)} {r.transaction_number}
+                                {r.location?.code} · {statusLabel(r.stock_status)} · {humanize(r.transaction_type)} {r.transaction_number}
                             </p>
                         </div>
                         <div className="text-right text-xs text-slate-500">

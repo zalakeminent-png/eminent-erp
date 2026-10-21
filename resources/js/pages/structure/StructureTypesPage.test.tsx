@@ -27,7 +27,7 @@ beforeEach(() => {
     put.mockReset().mockResolvedValue({ data: { data: {} } });
 });
 
-describe('department & warehouse type pop-ups', () => {
+describe('department type pop-ups', () => {
     it('accepts continuous multi-character input in the Add form without losing focus', async () => {
         renderWithAuth(<StructureTypesPage />, { user });
         await screen.findByText('Stores');
@@ -59,21 +59,22 @@ describe('department & warehouse type pop-ups', () => {
         });
     });
 
-    it('accepts continuous input in the Edit form for warehouse types', async () => {
+    it('accepts continuous input in the Edit form', async () => {
         renderWithAuth(<StructureTypesPage />, { user });
-        await screen.findByText('General Store');
+        await screen.findByText('Casting');
+        expect(screen.queryByText('General Store')).not.toBeInTheDocument(); // warehouse types are no longer managed
 
-        await userEvent.click(screen.getByRole('button', { name: 'Edit General Store' }));
+        await userEvent.click(screen.getByRole('button', { name: 'Edit Casting' }));
 
         const name = screen.getByLabelText(/^Name/);
         await userEvent.clear(name);
-        await userEvent.type(name, 'Central Store');
-        expect(name).toHaveValue('Central Store');
+        await userEvent.type(name, 'Foundry Casting');
+        expect(name).toHaveValue('Foundry Casting');
         expect(name).toHaveFocus();
 
         await userEvent.click(screen.getByRole('button', { name: 'Save' }));
-        expect(put).toHaveBeenCalledWith('/structure-types/3', {
-            name: 'Central Store', description: null, sort_order: 1, is_active: true,
+        expect(put).toHaveBeenCalledWith('/structure-types/2', {
+            name: 'Foundry Casting', description: 'Foundry', sort_order: 2, is_active: true,
         });
     });
 

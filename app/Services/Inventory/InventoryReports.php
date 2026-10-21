@@ -292,6 +292,7 @@ class InventoryReports
         $this->scope->applyByFactory($query, $user);
         $query->when(! empty($filters['status']), fn ($q) => $q->where('status', $filters['status']))
             ->when(! empty($filters['warehouse_id']), fn ($q) => $q->where('warehouse_id', $filters['warehouse_id']))
+            ->when(! empty($filters['factory_id']), fn ($q) => $q->where('factory_id', $filters['factory_id']))
             ->when(! empty($filters['item_id']), fn ($q) => $q->where('item_id', $filters['item_id']))
             ->when(! empty($filters['date_from']), fn ($q) => $q->whereDate('created_at', '>=', $filters['date_from']))
             ->when(! empty($filters['date_to']), fn ($q) => $q->whereDate('created_at', '<=', $filters['date_to']))
@@ -321,6 +322,7 @@ class InventoryReports
             ->whereIn('s.status', ['submitted', 'approved', 'posted'])
             ->when($factories !== null, fn ($q) => $q->whereIn('s.factory_id', $factories))
             ->when(! empty($filters['warehouse_id']), fn ($q) => $q->where('s.warehouse_id', $filters['warehouse_id']))
+            ->when(! empty($filters['factory_id']), fn ($q) => $q->where('s.factory_id', $filters['factory_id']))
             ->when(! empty($filters['item_id']), fn ($q) => $q->where('stock_count_lines.item_id', $filters['item_id']))
             ->when(! empty($filters['date_from']), fn ($q) => $q->whereDate('s.cutoff_at', '>=', $filters['date_from']))
             ->when(! empty($filters['date_to']), fn ($q) => $q->whereDate('s.cutoff_at', '<=', $filters['date_to']))

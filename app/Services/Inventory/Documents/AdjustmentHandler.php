@@ -66,7 +66,6 @@ class AdjustmentHandler extends DocumentHandler
     public function headerRules(?InventoryDocument $document): array
     {
         return [
-            'warehouse_id' => ['required', 'integer', Rule::exists('warehouses', 'id')],
             'reason_code_id' => ['required', 'integer', Rule::exists('inventory_reason_codes', 'id')->where('is_active', true)],
             'lines.*.source_location_id' => ['required', 'integer'],
             'lines.*.from_status' => ['required', Rule::in(self::ADJUSTABLE)],
@@ -78,12 +77,11 @@ class AdjustmentHandler extends DocumentHandler
     {
         $query = app(StockQuery::class);
 
-        return array_map(function (array $line) use ($document, $query) {
+        $locations = [];
+        $prepared = array_map(function (array $line) use ($query, &$locations) {
             $i = $line['_index'];
             $location = $this->location($line['source_location_id'] ?? null, "lines.{$i}.source_location_id", false);
-            if ($location->warehouse_id !== $document->warehouse_id) {
-                $this->fail("lines.{$i}.source_location_id", 'The location must belong to the selected warehouse.');
-            }
+            $locations[] = [$location, "lines.{$i}.source_location_id"];
 
             return [
                 ...$line,
@@ -94,6 +92,9 @@ class AdjustmentHandler extends DocumentHandler
                 'unit_cost' => bccomp($line['base_quantity'], '0', 6) > 0 && isset($line['unit_cost']) && $line['unit_cost'] !== '' ? $line['unit_cost'] : null,
             ];
         }, $lines);
+        $this->assignFactory($document, $locations);
+
+        return $prepared;
     }
 
     public function beforeAction(string $action, InventoryDocument $document, User $user, array $payload): void

@@ -53,7 +53,6 @@ export default function DepartmentDetailsPage() {
                             { label: 'Manager', value: person(d.manager) },
                             { label: 'Supervisor', value: person(d.supervisor) },
                             { label: 'Employees', value: d.members_count ?? 0 },
-                            { label: 'Warehouses responsible for', value: d.warehouses_count ?? 0 },
                             { label: 'Description', value: d.description || '—' },
                             { label: 'Created by', value: d.created_by?.full_name ?? '—' },
                             { label: 'Created', value: formatDateTime(d.created_at) },

@@ -48,7 +48,7 @@ class StockBrowser
             ->join('warehouse_locations as inv_l', 'inv_l.id', '=', 'inventory_balances.location_id')
             ->join('warehouses as inv_w', 'inv_w.id', '=', 'inventory_balances.warehouse_id')
             ->join('items as inv_i', 'inv_i.id', '=', 'inventory_balances.item_id')
-            ->with(['item.category', 'baseUom', 'location.warehouse', 'warehouse.department']);
+            ->with(['item.category', 'baseUom', 'location.warehouse', 'warehouse.department', 'warehouse.factory']);
         $this->scope->applyByFactory($query, $user, 'inventory_balances.factory_id');
 
         if (empty($filters['include_zero'])) {
@@ -139,6 +139,7 @@ class StockBrowser
             'id' => $b->id,
             'item' => Refs::coded($b->item) + ['item_type' => $b->item?->item_type, 'category' => Refs::coded($b->item?->category)],
             'warehouse' => Refs::coded($b->warehouse),
+            'factory' => Refs::coded($b->warehouse?->factory),
             'department' => Refs::coded($b->warehouse?->department),
             'location' => InventoryRefs::location($b->location),
             'stock_status' => $b->stock_status,
@@ -209,7 +210,7 @@ class StockBrowser
     /** Open reservation quantity per item (base UOM) for the given warehouse filter. */
     public function openReservations(array $filters, User $user): Builder
     {
-        $query = Reservation::query()->holding()->with(['item', 'baseUom', 'warehouse', 'location']);
+        $query = Reservation::query()->holding()->with(['item', 'baseUom', 'warehouse.factory', 'location']);
         $this->scope->applyByFactory($query, $user);
         foreach (['item_id', 'warehouse_id', 'location_id', 'factory_id'] as $f) {
             if (! empty($filters[$f])) {

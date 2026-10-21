@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Building, Building2, ChevronDown, ChevronRight, Download, Factory as FactoryIcon, Network, Warehouse as WarehouseIcon } from 'lucide-react';
+import { Building, Building2, ChevronDown, ChevronRight, Download, Factory as FactoryIcon, MapPin, Network } from 'lucide-react';
 import { useAuth } from '@/auth/AuthContext';
 import { useApi, useDebouncedValue } from '@/hooks/useApi';
 import { Card } from '@/components/ui/Card';
@@ -45,7 +45,7 @@ function Inactive({ active }: { active: boolean }) {
 }
 
 /**
- * Company → Factory → Departments / Warehouses → Locations. Real records
+ * Company → Factory → Departments / Storage locations. Real records
  * only; stock balances are introduced by the Inventory module.
  */
 export default function FactoryStructurePage() {
@@ -97,11 +97,10 @@ export default function FactoryStructurePage() {
                 actions={can('factory-structure.export') && <Button variant="secondary" icon={<Download className="h-4 w-4" />} loading={exporting} onClick={exportCsv}>Export CSV</Button>}
             />
 
-            <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {([
                     ['Factories', s?.totals.factories, FactoryIcon],
                     ['Departments', s?.totals.departments, Building],
-                    ['Warehouses', s?.totals.warehouses, WarehouseIcon],
                     ['Locations', s?.totals.locations, Network],
                 ] as const).map(([label, value, Icon]) => (
                     <Card key={label} className="flex items-center gap-3 p-4">
@@ -116,7 +115,7 @@ export default function FactoryStructurePage() {
 
             <Card>
                 <div className="grid grid-cols-1 gap-3 border-b border-slate-200 p-4 sm:grid-cols-[1fr_200px]">
-                    <SearchInput value={search} onChange={setSearch} placeholder="Search factory, department, warehouse or location" />
+                    <SearchInput value={search} onChange={setSearch} placeholder="Search factory, department or location" />
                     <select aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value)} className={filterInputClass}>
                         <option value="">All statuses</option>
                         <option value="active">Active only</option>
@@ -137,7 +136,7 @@ export default function FactoryStructurePage() {
                     <EmptyState
                         icon={<Network className="h-6 w-6" />}
                         title={searching || status ? 'Nothing matches your filters' : 'No factories set up yet'}
-                        description={searching || status ? undefined : 'Create a factory, then add departments, warehouses and locations.'}
+                        description={searching || status ? undefined : 'Create a factory, then add departments and storage locations.'}
                     />
                 ) : (
                     <div className={cx('p-2 sm:p-4', loading && 'opacity-60')}>
@@ -161,7 +160,7 @@ export default function FactoryStructurePage() {
                                             <Badge>{f.type_label}</Badge>
                                             <Inactive active={f.is_active} />
                                             <span className="ml-auto text-xs text-slate-500">
-                                                {f.counts.departments} dept · {f.counts.warehouses} wh · {f.counts.locations} loc
+                                                {f.counts.departments} dept · {f.counts.locations} loc
                                             </span>
                                         </div>
                                         {isOpen(fk) && (
@@ -195,34 +194,14 @@ export default function FactoryStructurePage() {
                                                 </section>
                                                 <section>
                                                     <h3 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                                        <WarehouseIcon className="h-3.5 w-3.5" aria-hidden="true" /> Warehouses & locations
+                                                        <MapPin className="h-3.5 w-3.5" aria-hidden="true" /> Storage locations
                                                     </h3>
-                                                    {f.warehouses.length === 0 ? (
-                                                        <p className="px-1 text-sm text-slate-400">No warehouses.</p>
+                                                    {f.counts.locations === 0 ? (
+                                                        <p className="px-1 text-sm text-slate-400">No storage locations.</p>
                                                     ) : (
-                                                        <ul className="space-y-2">
-                                                            {f.warehouses.map((w) => {
-                                                                const wk = `w${w.id}`;
-                                                                return (
-                                                                    <li key={w.id} className="rounded-md border border-slate-100">
-                                                                        <div className="flex flex-wrap items-center gap-1.5 px-2 py-1.5 text-sm">
-                                                                            {w.locations.length > 0 ? <Toggle open={isOpen(wk)} onClick={() => toggle(wk)} label={w.name} /> : <span className="w-6" />}
-                                                                            {can('warehouses.view') ? (
-                                                                                <Link to={`/factory-setup/warehouses/${w.id}`} className="font-medium text-slate-800 hover:text-brand-700">{w.name}</Link>
-                                                                            ) : <span className="font-medium">{w.name}</span>}
-                                                                            <span className="font-mono text-xs text-slate-400">{w.code}</span>
-                                                                            <Inactive active={w.is_active} />
-                                                                            <span className="ml-auto text-xs text-slate-500">{w.locations_count} loc</span>
-                                                                        </div>
-                                                                        {w.locations.length > 0 && isOpen(wk) && (
-                                                                            <div className="border-t border-slate-100 px-2 py-1">
-                                                                                <LocationTree nodes={w.locations} defaultExpanded={searching} />
-                                                                            </div>
-                                                                        )}
-                                                                    </li>
-                                                                );
-                                                            })}
-                                                        </ul>
+                                                        <div className="rounded-md border border-slate-100 px-2 py-1">
+                                                            <LocationTree nodes={f.warehouses.flatMap((w) => w.locations)} defaultExpanded={searching} />
+                                                        </div>
                                                     )}
                                                 </section>
                                             </div>

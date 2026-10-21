@@ -39,9 +39,6 @@ import DepartmentFormPage from '@/pages/structure/departments/DepartmentFormPage
 import DepartmentDetailsPage from '@/pages/structure/departments/DepartmentDetailsPage';
 import DepartmentEmployeesPage from '@/pages/structure/departments/DepartmentEmployeesPage';
 import DepartmentLeadersPage from '@/pages/structure/departments/DepartmentLeadersPage';
-import WarehouseListPage from '@/pages/structure/warehouses/WarehouseListPage';
-import WarehouseFormPage from '@/pages/structure/warehouses/WarehouseFormPage';
-import WarehouseDetailsPage from '@/pages/structure/warehouses/WarehouseDetailsPage';
 import LocationListPage from '@/pages/structure/locations/LocationListPage';
 import LocationTreePage from '@/pages/structure/locations/LocationTreePage';
 import LocationFormPage from '@/pages/structure/locations/LocationFormPage';
@@ -145,13 +142,6 @@ export default function App() {
                             <Route path=":id/edit" element={<RequirePermission permission="departments.update"><DepartmentFormPage /></RequirePermission>} />
                             <Route path=":id/employees" element={<RequirePermission permission="departments.view"><DepartmentEmployeesPage /></RequirePermission>} />
                             <Route path=":id/leaders" element={<RequirePermission permission="departments.assign-managers"><DepartmentLeadersPage /></RequirePermission>} />
-                        </Route>
-
-                        <Route path="warehouses">
-                            <Route index element={<RequirePermission permission="warehouses.view"><WarehouseListPage /></RequirePermission>} />
-                            <Route path="new" element={<RequirePermission permission="warehouses.create"><WarehouseFormPage /></RequirePermission>} />
-                            <Route path=":id" element={<RequirePermission permission="warehouses.view"><WarehouseDetailsPage /></RequirePermission>} />
-                            <Route path=":id/edit" element={<RequirePermission permission="warehouses.update"><WarehouseFormPage /></RequirePermission>} />
                         </Route>
 
                         <Route path="locations">

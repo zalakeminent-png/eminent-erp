@@ -18,7 +18,7 @@ class PermissionController extends Controller
         $existing = Permission::query()->where('guard_name', PermissionCatalog::GUARD)->pluck('name')->flip();
         $standard = config('erp.standard_actions');
 
-        $modules = collect($catalog->modules())->map(fn (array $definition, string $key) => [
+        $modules = collect($catalog->modules())->reject(fn (array $definition) => $definition['hidden'] ?? false)->map(fn (array $definition, string $key) => [
             'key' => $key,
             'label' => $definition['label'],
             'group' => $definition['group'],

@@ -38,7 +38,7 @@ class InventoryDocumentController extends Controller
     {
         $query = InventoryDocument::query()
             ->where('document_type', $this->type($request))
-            ->with(['warehouse', 'sourceLocation.warehouse', 'destinationLocation.warehouse', 'supplier', 'reasonCode', 'requester', 'department'])
+            ->with(['factory', 'warehouse', 'sourceLocation.warehouse', 'destinationLocation.warehouse', 'supplier', 'reasonCode', 'requester', 'department'])
             ->withCount('lines');
         $this->scope->applyByFactory($query, $request->user());
 

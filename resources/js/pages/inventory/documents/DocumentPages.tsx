@@ -19,7 +19,7 @@ import { ItemPicker, downloadFile, type ItemOption as SharedItemOption } from '@
 import type { CodedRef } from '@/pages/master-data/types';
 import {
     ApprovalTimeline, DocumentStatusBadge, FieldShell, LocationSelect, Qty, QuantityInput, ReasonSelect, StatusSelect, StockAvailability,
-    SupplierPicker, UomSelect, WarehouseSelect, requestKey, statusLabel,
+    FactorySelect, SupplierPicker, UomSelect, requestKey, statusLabel,
 } from '../components';
 import type { DocumentLine, InventoryDocument, StockStatus } from '../types';
 import { ACTION_LABELS, ACTION_TEXT, type DocConfig } from './config';
@@ -34,7 +34,7 @@ export function InventoryDocumentListPage({ config }: { config: DocConfig }) {
     const [search, setSearch] = useState(list.get('search'));
     const debounced = useDebouncedValue(search);
     const { data, loading, error } = useApi<Paginated<InventoryDocument>>(`/inventory/${config.endpoint}`, {
-        search: debounced, status: list.get('status'), warehouse_id: list.get('warehouse_id'), date_from: list.get('date_from'), date_to: list.get('date_to'),
+        search: debounced, status: list.get('status'), factory_id: list.get('factory_id'), date_from: list.get('date_from'), date_to: list.get('date_to'),
         sort: list.sort, direction: list.direction, page: list.page, per_page: 15,
     });
     const showSupplier = config.type === 'grn';
@@ -83,7 +83,7 @@ export function InventoryDocumentListPage({ config }: { config: DocConfig }) {
                                         <Td className="whitespace-nowrap">{formatDate(d.document_date)}</Td>
                                         <Td className="hidden text-xs md:table-cell">
                                             {showSupplier ? d.supplier?.name : (
-                                                <>{d.source_location ? `${d.source_location.warehouse_code}/${d.source_location.code}` : d.warehouse?.code ?? '—'}{d.destination_location && ` → ${d.destination_location.warehouse_code}/${d.destination_location.code}`}</>
+                                                <>{d.source_location ? d.source_location.code : d.factory?.name ?? '—'}{d.destination_location && ` → ${d.destination_location.code}`}</>
                                             )}
                                             {d.reason_code && <span className="block text-slate-500">{d.reason_code.name}</span>}
                                         </Td>
@@ -126,7 +126,7 @@ interface LineState {
 
 interface HeaderState {
     document_date: string;
-    warehouse_id: string;
+    factory_id: string;
     supplier: CodedRef | null;
     supplier_invoice_number: string;
     reference_number: string;
@@ -164,7 +164,7 @@ export function InventoryDocumentEditorPage({ config }: { config: DocConfig }) {
     const toast = useToast();
     const existing = useApi<{ data: InventoryDocument }>(id ? `/inventory/${config.endpoint}/${id}` : null);
     const [header, setHeader] = useState<HeaderState>({
-        document_date: today(), warehouse_id: '', supplier: null, supplier_invoice_number: '', reference_number: '', source_location_id: '',
+        document_date: today(), factory_id: '', supplier: null, supplier_invoice_number: '', reference_number: '', source_location_id: '',
         destination_location_id: '', requires_handover: true, original_document_id: '', reason_code_id: '', decision: 'release', remarks: '',
     });
     const [lines, setLines] = useState<LineState[]>([blankLine(config)]);
@@ -177,7 +177,7 @@ export function InventoryDocumentEditorPage({ config }: { config: DocConfig }) {
         const d = existing.data?.data;
         if (!d) return;
         setHeader({
-            document_date: d.document_date, warehouse_id: String(d.warehouse?.id ?? ''), supplier: d.supplier ?? null,
+            document_date: d.document_date, factory_id: String(d.factory?.id ?? ''), supplier: d.supplier ?? null,
             supplier_invoice_number: d.supplier_invoice_number ?? '', reference_number: d.reference_number ?? '',
             source_location_id: String(d.source_location?.id ?? ''), destination_location_id: String(d.destination_location?.id ?? ''),
             requires_handover: d.requires_handover, original_document_id: String(d.original_document?.id ?? ''), reason_code_id: String(d.reason_code?.id ?? ''),
@@ -192,11 +192,11 @@ export function InventoryDocumentEditorPage({ config }: { config: DocConfig }) {
     const payload = () => {
         const base: Record<string, unknown> = { document_date: header.document_date, remarks: header.remarks || null, reference_number: header.reference_number || null };
         const t = config.type;
-        if (t === 'grn') Object.assign(base, { warehouse_id: header.warehouse_id || null, supplier_id: header.supplier?.id ?? null, supplier_invoice_number: header.supplier_invoice_number || null });
+        if (t === 'grn') Object.assign(base, { supplier_id: header.supplier?.id ?? null, supplier_invoice_number: header.supplier_invoice_number || null });
         if (t === 'transfer') Object.assign(base, { source_location_id: header.source_location_id || null, destination_location_id: header.destination_location_id || null, requires_handover: header.requires_handover });
         if (t === 'material_issue') Object.assign(base, { source_location_id: header.source_location_id || null, destination_location_id: header.destination_location_id || null });
         if (t === 'material_return') Object.assign(base, { original_document_id: header.original_document_id || null, destination_location_id: header.destination_location_id || null, reason_code_id: header.reason_code_id || null });
-        if (t === 'adjustment') Object.assign(base, { warehouse_id: header.warehouse_id || null, reason_code_id: header.reason_code_id || null });
+        if (t === 'adjustment') Object.assign(base, { reason_code_id: header.reason_code_id || null });
         if (t === 'scrap') Object.assign(base, { reason_code_id: header.reason_code_id || null });
         if (t === 'qc_disposition') Object.assign(base, { decision: header.decision, reason_code_id: header.reason_code_id || null });
         base.lines = lines.map((l) => ({
@@ -244,7 +244,7 @@ export function InventoryDocumentEditorPage({ config }: { config: DocConfig }) {
         return <Alert tone="warning">Only draft documents can be edited. <Link to={`${config.base}/${id}`} className="underline">Back to document</Link></Alert>;
     }
 
-    const lineWarehouse = config.type === 'grn' || config.type === 'adjustment' ? header.warehouse_id : undefined;
+    const lineFactory = config.type === 'grn' || config.type === 'adjustment' ? header.factory_id : undefined;
     const lineErrors = Object.keys(errors).filter((k) => k.startsWith('lines') && !/^lines\.\d+\./.test(k)).map((k) => errors[k]);
     const err = (key: string) => errors[key];
 
@@ -259,7 +259,7 @@ export function InventoryDocumentEditorPage({ config }: { config: DocConfig }) {
                 <CardBody className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <TextInput label="Date" type="date" value={header.document_date} max={today()} onChange={(e) => set('document_date', e.target.value)} error={err('document_date')} />
                     {(config.type === 'grn' || config.type === 'adjustment') && (
-                        <WarehouseSelect label={config.type === 'grn' ? 'Receiving warehouse' : 'Warehouse'} required value={header.warehouse_id} onChange={(v) => set('warehouse_id', v)} error={err('warehouse_id')} />
+                        <FactorySelect label={config.type === 'grn' ? 'Receiving factory' : 'Factory'} allowAll="All factories" value={header.factory_id} onChange={(v) => set('factory_id', v)} />
                     )}
                     {config.type === 'grn' && (
                         <>
@@ -347,13 +347,13 @@ export function InventoryDocumentEditorPage({ config }: { config: DocConfig }) {
                                 {config.line.sourceLocation && (
                                     <div className="col-span-2 md:col-span-2">
                                         <span className="mb-1.5 block text-xs font-medium text-slate-600">Location</span>
-                                        <LocationSelect compact label={`Line ${i + 1} location`} warehouseId={lineWarehouse} value={line.source_location_id} onChange={(v) => setLine(i, { source_location_id: v })} error={le('source_location_id')} />
+                                        <LocationSelect compact label={`Line ${i + 1} location`} factoryId={lineFactory} value={line.source_location_id} onChange={(v) => setLine(i, { source_location_id: v })} error={le('source_location_id')} />
                                     </div>
                                 )}
                                 {config.line.destinationLocation && (
                                     <div className="col-span-2 md:col-span-2">
                                         <span className="mb-1.5 block text-xs font-medium text-slate-600">{config.line.destinationLocation === 'optional' ? 'Move to (optional)' : 'Put-away location'}</span>
-                                        <LocationSelect compact label={`Line ${i + 1} destination`} warehouseId={lineWarehouse} placeholder={config.line.destinationLocation === 'optional' ? 'Same location' : undefined}
+                                        <LocationSelect compact label={`Line ${i + 1} destination`} factoryId={lineFactory} placeholder={config.line.destinationLocation === 'optional' ? 'Same location' : undefined}
                                             value={line.destination_location_id} onChange={(v) => setLine(i, { destination_location_id: v })} error={le('destination_location_id')} />
                                     </div>
                                 )}
@@ -460,11 +460,11 @@ export function InventoryDocumentDetailsPage({ config }: { config: DocConfig }) 
     const info = [
         { label: 'Status', value: <DocumentStatusBadge status={doc.status} /> },
         { label: 'Date', value: formatDate(doc.document_date) },
-        doc.warehouse && { label: 'Warehouse', value: `${doc.warehouse.code} — ${doc.warehouse.name}` },
+        doc.factory && { label: 'Factory', value: doc.factory.name },
         doc.supplier && { label: 'Supplier', value: doc.supplier.name },
         doc.supplier_invoice_number && { label: 'Invoice / challan', value: doc.supplier_invoice_number },
-        doc.source_location && { label: 'From', value: `${doc.source_location.warehouse_code}/${doc.source_location.code} — ${doc.source_location.name}` },
-        doc.destination_location && { label: 'To', value: `${doc.destination_location.warehouse_code}/${doc.destination_location.code} — ${doc.destination_location.name}` },
+        doc.source_location && { label: 'From', value: `${doc.source_location.code} — ${doc.source_location.name}` },
+        doc.destination_location && { label: 'To', value: `${doc.destination_location.code} — ${doc.destination_location.name}` },
         doc.department && { label: 'Department', value: doc.department.name },
         doc.original_document && { label: 'Original issue', value: <Link className="text-brand-700 hover:underline" to={`/inventory/material-issues/${doc.original_document.id}`}>{doc.original_document.document_number}</Link> },
         doc.reason_code && { label: 'Reason', value: doc.reason_code.name },
@@ -527,9 +527,9 @@ export function InventoryDocumentDetailsPage({ config }: { config: DocConfig }) 
                                         <Td className="text-right"><Qty value={l.quantity} uom={l.uom?.code} /></Td>
                                         <Td className="hidden text-right md:table-cell"><Qty value={l.base_quantity} uom={l.base_uom?.code} /></Td>
                                         <Td className="hidden text-xs md:table-cell">
-                                            {l.source_location && `${l.source_location.warehouse_code}/${l.source_location.code}`}
+                                            {l.source_location?.code}
                                             {l.source_location && l.destination_location && l.source_location.id !== l.destination_location.id && ' → '}
-                                            {l.destination_location && (!l.source_location || l.source_location.id !== l.destination_location.id) && `${l.destination_location.warehouse_code}/${l.destination_location.code}`}
+                                            {l.destination_location && (!l.source_location || l.source_location.id !== l.destination_location.id) && l.destination_location.code}
                                         </Td>
                                         <Td className="text-xs">
                                             {l.from_status && l.to_status && l.from_status !== l.to_status ? `${statusLabel(l.from_status)} → ${statusLabel(l.to_status)}` : statusLabel(l.to_status ?? l.from_status)}

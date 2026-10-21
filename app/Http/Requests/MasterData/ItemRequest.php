@@ -4,6 +4,7 @@ namespace App\Http\Requests\MasterData;
 
 use App\Models\MasterData\Item;
 use App\Models\MasterData\UnitOfMeasure;
+use App\Models\WarehouseLocation;
 use App\Support\Decimal;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -17,6 +18,18 @@ class ItemRequest extends MasterRequest
     protected function modelClass(): string
     {
         return Item::class;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        parent::prepareForValidation();
+        // Warehouses are internal: the default location determines it.
+        if ($this->filled('default_location_id')) {
+            $warehouseId = WarehouseLocation::query()->whereKey($this->input('default_location_id'))->value('warehouse_id');
+            $this->merge(['default_warehouse_id' => $warehouseId ?? 0]);
+        } elseif ($this->exists('default_location_id')) {
+            $this->merge(['default_warehouse_id' => null]);
+        }
     }
 
     public function rules(): array
@@ -145,8 +158,8 @@ class ItemRequest extends MasterRequest
             'dimension_uom_id.exists' => 'Select an active length unit.',
             'weight_uom_id.exists' => 'Select an active weight unit.',
             'weight_uom_id.required_with' => 'Select the unit for the weight per piece.',
-            'default_location_id.exists' => 'The location must be an active location of the selected warehouse.',
-            'default_warehouse_id.exists' => 'Select an active warehouse.',
+            'default_location_id.exists' => 'Select an active storage location.',
+            'default_warehouse_id.exists' => 'The selected default location is not available.',
         ];
     }
 }

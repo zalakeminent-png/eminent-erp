@@ -234,7 +234,7 @@ class DocumentService
         // Factory comes from the warehouse; every touched location must be in scope.
         $warehouse = Warehouse::query()->find($document->warehouse_id);
         if (! $warehouse) {
-            throw ValidationException::withMessages(['warehouse_id' => 'Select a warehouse.']);
+            throw ValidationException::withMessages(['lines' => 'Select the locations for the lines.']);
         }
         $document->factory_id = $warehouse->factory_id;
         $locationIds = collect($prepared)->flatMap(fn ($l) => [$l['source_location_id'] ?? null, $l['destination_location_id'] ?? null])

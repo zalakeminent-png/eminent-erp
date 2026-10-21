@@ -80,7 +80,7 @@ class StockController extends Controller
         $warehouses = $balances->groupBy('warehouse_id')->map(function ($rows, $warehouseId) use ($item) {
             $summary = $this->query->summary($item->id, (int) $warehouseId);
 
-            return ['warehouse' => Refs::coded($rows->first()->warehouse)] + $summary;
+            return ['warehouse' => Refs::coded($rows->first()->warehouse), 'factory' => Refs::coded($rows->first()->warehouse?->factory)] + $summary;
         })->values();
 
         $total = $balances->isEmpty() ? null : $this->query->summary($item->id);
@@ -98,7 +98,7 @@ class StockController extends Controller
                 'warehouses' => $warehouses,
                 'balances' => $balances->map(fn (Balance $b) => $this->browser->balanceRow($b))->values(),
                 'reservations' => $this->browser->openReservations(['item_id' => $item->id], $user)->latest('id')->limit(50)->get()->map(fn (Reservation $r) => [
-                    'id' => $r->id, 'reservation_number' => $r->reservation_number, 'warehouse' => Refs::coded($r->warehouse),
+                    'id' => $r->id, 'reservation_number' => $r->reservation_number, 'warehouse' => Refs::coded($r->warehouse), 'factory' => Refs::coded($r->warehouse?->factory),
                     'location' => InventoryRefs::location($r->location), 'open_base_quantity' => $r->openBaseQuantity(),
                     'reference_type' => $r->reference_type, 'reference_number' => $r->reference_number, 'status' => $r->status,
                     'expires_on' => $r->expires_on?->toDateString(),

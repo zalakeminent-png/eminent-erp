@@ -103,6 +103,24 @@ abstract class DocumentHandler
         return $location;
     }
 
+    /**
+     * Warehouses are internal: a document belongs to the factory of its
+     * line locations, which must all be in one factory. The first line's
+     * internal warehouse becomes the document's.
+     *
+     * @param  list<array{0: WarehouseLocation, 1: string}>  $locations  [location, error field]
+     */
+    protected function assignFactory(InventoryDocument $document, array $locations): void
+    {
+        $factoryId = $locations[0][0]->warehouse->factory_id;
+        foreach ($locations as [$location, $field]) {
+            if ($location->warehouse->factory_id !== $factoryId) {
+                $this->fail($field, 'All lines must be in the same factory.');
+            }
+        }
+        $document->warehouse_id = $locations[0][0]->warehouse_id;
+    }
+
     protected function purpose(WarehouseLocation $location): string
     {
         return StockQuery::purpose($location);

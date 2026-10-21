@@ -88,6 +88,7 @@ export interface Location extends Audited {
     id: number;
     warehouse_id: number;
     warehouse?: Ref & { factory_id: number; is_active: boolean };
+    factory?: Ref;
     parent_id: number | null;
     parent?: Ref | null;
     code: string;

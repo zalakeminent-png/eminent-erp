@@ -205,7 +205,7 @@ export default function ItemDetailsPage() {
                     { label: 'Minimum stock', value: dim(item.min_stock_level, item.base_uom) },
                     { label: 'Maximum stock', value: dim(item.max_stock_level, item.base_uom) },
                     { label: 'Reorder level', value: dim(item.reorder_level, item.base_uom) },
-                    { label: 'Default warehouse / location', value: item.default_warehouse ? `${item.default_warehouse.name}${item.default_location ? ` / ${item.default_location.code}` : ''}` : '—' },
+                    { label: 'Default location', value: item.default_location ? `${item.default_location.code} — ${item.default_location.name}` : '—' },
                     { label: 'Allow negative stock', value: yes(item.allow_negative_stock) },
                     { label: 'Requires QC', value: yes(item.requires_qc) },
                     { label: 'Purchased / Manufactured / Sold', value: `${yes(item.is_purchased)} / ${yes(item.is_manufactured)} / ${yes(item.is_sold)}` },

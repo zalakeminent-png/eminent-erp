@@ -69,7 +69,7 @@ export function StockListPage({ view }: { view: StockView }) {
     const debounced = useDebouncedValue(search);
     const lookups = useLookups();
     const params = {
-        search: debounced, warehouse_id: list.get('warehouse_id'), status: list.get('status'), department_id: list.get('department_id'),
+        search: debounced, factory_id: list.get('factory_id'), status: list.get('status'), department_id: list.get('department_id'),
         sort: list.sort, direction: list.direction,
     };
     const { data, loading, error } = useApi<Paginated<BalanceRow>>(view.endpoint, { ...params, page: list.page, per_page: 25 });
@@ -99,9 +99,9 @@ export function StockListPage({ view }: { view: StockView }) {
             <Card>
                 <FilterBar>
                     <SearchInput value={search} onChange={(v) => { setSearch(v); list.update({ search: v }); }} placeholder="Search item code, name or location" />
-                    <select aria-label="Filter by warehouse" value={list.get('warehouse_id')} onChange={(e) => list.update({ warehouse_id: e.target.value })} className={filterInputClass}>
-                        <option value="">All warehouses</option>
-                        {lookups.data?.data.warehouses.map((w) => <option key={w.id} value={w.id}>{w.code} — {w.name}</option>)}
+                    <select aria-label="Filter by factory" value={list.get('factory_id')} onChange={(e) => list.update({ factory_id: e.target.value })} className={filterInputClass}>
+                        <option value="">All factories</option>
+                        {lookups.data?.data.factories.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
                     </select>
                     {view.preset === 'wip' && (
                         <select aria-label="Filter by department" value={list.get('department_id')} onChange={(e) => list.update({ department_id: e.target.value })} className={filterInputClass}>
@@ -127,7 +127,7 @@ export function StockListPage({ view }: { view: StockView }) {
                                     {view.preset === 'wip' && <Th className="hidden md:table-cell">Department</Th>}
                                     <Th>Status</Th>
                                     <SortableTh label="Quantity" field="quantity" sort={list.sort} direction={list.direction} onSort={list.onSort} className="text-right" />
-                                    {showReserved && <Th className="hidden text-right lg:table-cell">Reserved / ATP (warehouse)</Th>}
+                                    {showReserved && <Th className="hidden text-right lg:table-cell">Reserved / Available to promise</Th>}
                                     <Th className="hidden text-right lg:table-cell">Value</Th>
                                     <SortableTh label="Last movement" field="last_movement_at" sort={list.sort} direction={list.direction} onSort={list.onSort} className="hidden xl:table-cell" />
                                 </tr>
@@ -140,9 +140,9 @@ export function StockListPage({ view }: { view: StockView }) {
                                                 <Link to={`/inventory/stock/${b.item.id}`} className="font-mono text-xs font-semibold text-slate-900 hover:text-brand-700">{b.item.code}</Link>
                                             ) : <span className="font-mono text-xs font-semibold">{b.item.code}</span>}
                                             <span className="block text-xs text-slate-500">{b.item.name}</span>
-                                            <span className="block text-xs text-slate-500 sm:hidden">{b.location?.warehouse_code}/{b.location?.code}</span>
+                                            <span className="block text-xs text-slate-500 sm:hidden">{b.location?.code}</span>
                                         </Td>
-                                        <Td className="hidden text-xs sm:table-cell">{b.warehouse?.code} / {b.location?.code}<span className="block text-slate-500">{b.location?.name}</span></Td>
+                                        <Td className="hidden text-xs sm:table-cell">{b.location?.code}<span className="block text-slate-500">{b.location?.name}</span></Td>
                                         {view.preset === 'wip' && <Td className="hidden text-xs md:table-cell">{b.department?.name ?? '—'}</Td>}
                                         <Td><StockStatusBadge status={b.stock_status} /></Td>
                                         <Td className="text-right font-medium"><Qty value={b.quantity} uom={b.uom?.code} /></Td>
@@ -176,9 +176,9 @@ interface StockCard {
     item: CodedRef & { item_type: string | null; category: CodedRef | null; requires_qc: boolean; reorder_level: string | null; min_stock_level: string | null };
     uom: UomRef | null;
     total: Summary | null;
-    warehouses: (Summary & { warehouse: CodedRef })[];
+    warehouses: (Summary & { warehouse: CodedRef; factory: CodedRef | null })[];
     balances: BalanceRow[];
-    reservations: { id: number; reservation_number: string; warehouse: CodedRef | null; location: LocationRef | null; open_base_quantity: string; reference_type: string; reference_number: string | null; status: string; expires_on: string | null }[];
+    reservations: { id: number; reservation_number: string; warehouse: CodedRef | null; factory: CodedRef | null; location: LocationRef | null; open_base_quantity: string; reference_type: string; reference_number: string | null; status: string; expires_on: string | null }[];
     recent_movements: LedgerRow[];
 }
 
@@ -214,14 +214,14 @@ export function ItemStockPage() {
                     </CardBody>
                 </Card>
                 <Card className="lg:col-span-2">
-                    <CardHeader title="By warehouse" />
+                    <CardHeader title="By factory" />
                     {card.warehouses.length === 0 ? <p className="px-4 pb-4 text-sm text-slate-500">No stock.</p> : (
                         <Table>
-                            <thead><tr><Th>Warehouse</Th><Th className="text-right">Available</Th><Th className="hidden text-right sm:table-cell">QC</Th><Th className="hidden text-right md:table-cell">Rejected / Scrap</Th><Th className="text-right">Reserved</Th><Th className="text-right">ATP</Th></tr></thead>
+                            <thead><tr><Th>Factory</Th><Th className="text-right">Available</Th><Th className="hidden text-right sm:table-cell">QC</Th><Th className="hidden text-right md:table-cell">Rejected / Scrap</Th><Th className="text-right">Reserved</Th><Th className="text-right">ATP</Th></tr></thead>
                             <tbody className="divide-y divide-slate-100 bg-white">
                                 {card.warehouses.map((w) => (
                                     <tr key={w.warehouse.id}>
-                                        <Td className="text-xs">{w.warehouse.code}</Td>
+                                        <Td className="text-xs">{w.factory?.name ?? '—'}</Td>
                                         <Td className="text-right"><Qty value={w.by_status.available} /></Td>
                                         <Td className="hidden text-right sm:table-cell"><Qty value={String(Number(w.by_status.qc_pending) + Number(w.by_status.qc_hold))} /></Td>
                                         <Td className="hidden text-right md:table-cell"><Qty value={w.by_status.rejected} /> / <Qty value={w.by_status.scrap} /></Td>
@@ -240,7 +240,7 @@ export function ItemStockPage() {
                         <tbody className="divide-y divide-slate-100 bg-white">
                             {card.balances.map((b) => (
                                 <tr key={b.id}>
-                                    <Td className="text-xs">{b.warehouse?.code}/{b.location?.code}<span className="block text-slate-500">{b.location?.name}</span></Td>
+                                    <Td className="text-xs">{b.location?.code}<span className="block text-slate-500">{b.location?.name}</span></Td>
                                     <Td><StockStatusBadge status={b.stock_status} /></Td>
                                     <Td className="text-right"><Qty value={b.quantity} uom={b.uom?.code} /></Td>
                                     <Td className="hidden text-right text-xs md:table-cell"><Money value={b.value} /></Td>
@@ -258,7 +258,7 @@ export function ItemStockPage() {
                                 <li key={r.id} className="px-4 py-2 text-sm">
                                     <Link to={`/inventory/reservations?search=${r.reservation_number}`} className="font-mono text-xs font-semibold text-brand-700">{r.reservation_number}</Link>
                                     <span className="ml-2"><Qty value={r.open_base_quantity} uom={uom} /></span> <DocumentStatusBadge status={r.status} />
-                                    <span className="block text-xs text-slate-500">{r.warehouse?.code}{r.location && `/${r.location.code}`} · {r.reference_type} {r.reference_number}{r.expires_on && ` · expires ${formatDate(r.expires_on)}`}</span>
+                                    <span className="block text-xs text-slate-500">{r.location ? r.location.code : r.factory?.name} · {r.reference_type} {r.reference_number}{r.expires_on && ` · expires ${formatDate(r.expires_on)}`}</span>
                                 </li>
                             ))}
                         </ul>

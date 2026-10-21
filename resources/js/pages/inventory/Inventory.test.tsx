@@ -94,7 +94,7 @@ describe('inventory dashboard', () => {
 });
 
 describe('inventory dashboard location filter', () => {
-    it('is enabled and lists locations without choosing a warehouse first', async () => {
+    it('is enabled and lists locations straight away', async () => {
         const empty = {
             active_items: 0, items_with_available_stock: 0, valuation: { known_value: '0', unvalued_balances: 0 }, stock_by_uom: [], groups: [],
             rejected: [], scrap: [], qc_pending: [], low_stock: { count: 0, items: [] }, recent_movements: [],
@@ -104,7 +104,7 @@ describe('inventory dashboard location filter', () => {
         renderWithAuth(<InventoryDashboardPage />, { user: makeUser(['inventory.dashboard.view']) });
         const select = screen.getByLabelText('Location');
         expect(select).toBeEnabled();
-        expect(await within(select).findByRole('option', { name: 'RMS / R1' })).toBeInTheDocument();
+        expect(await within(select).findByRole('option', { name: 'R1 — Rack 1' })).toBeInTheDocument();
 
         await userEvent.selectOptions(select, '31');
         await waitFor(() => expect(get).toHaveBeenCalledWith('/inventory/dashboard', expect.objectContaining({ params: expect.objectContaining({ location_id: '31' }) })));
@@ -119,8 +119,10 @@ describe('goods receipt editor', () => {
             { route: '/new', user: makeUser(['inventory.grn.view', 'inventory.grn.create', 'items.view']) },
         );
 
-        await userEvent.selectOptions(await screen.findByLabelText('Receiving warehouse'), '7');
-        await userEvent.click(screen.getByLabelText('Supplier'));
+        // One factory: no factory or warehouse selection is shown.
+        await userEvent.click(await screen.findByLabelText('Supplier'));
+        expect(screen.queryByLabelText('Receiving factory')).not.toBeInTheDocument();
+        expect(screen.queryByText(/warehouse/i)).not.toBeInTheDocument();
         await userEvent.click(await screen.findByRole('option', { name: /Steel Traders/ }));
         await userEvent.type(screen.getByLabelText('Supplier invoice / challan no.'), 'CH-77');
         await userEvent.click(screen.getByLabelText('Line 1 item'));
@@ -132,9 +134,10 @@ describe('goods receipt editor', () => {
 
         await waitFor(() => expect(post).toHaveBeenCalled());
         expect(post).toHaveBeenCalledWith('/inventory/grns', expect.objectContaining({
-            warehouse_id: '7', supplier_id: 5, supplier_invoice_number: 'CH-77',
+            supplier_id: 5, supplier_invoice_number: 'CH-77',
             lines: [expect.objectContaining({ item_id: 11, quantity: '12.5', uom_id: '2', destination_location_id: '31' })],
         }));
+        expect(post.mock.calls[0][1]).not.toHaveProperty('warehouse_id');
         expect(await screen.findByText('Details')).toBeInTheDocument();
     });
 

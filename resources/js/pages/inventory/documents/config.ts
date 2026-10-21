@@ -16,7 +16,7 @@ export interface DocConfig {
     related?: { label: string; to: string; permission: string };
     /** Line editor features. */
     line: {
-        destinationLocation?: 'warehouse' | 'optional';
+        destinationLocation?: 'required' | 'optional';
         sourceLocation?: boolean;
         fromStatuses?: StockStatus[];
         toStatuses?: StockStatus[];
@@ -34,11 +34,11 @@ export const DOCS: Record<DocumentType, DocConfig> = {
         type: 'grn', endpoint: 'grns', base: '/inventory/goods-receipts', module: 'inventory.grn', title: 'Goods Receipts', noun: 'GRN',
         description: 'Material received from suppliers. Items that require QC are received into QC Pending and are not available until released.',
         createPermission: ['inventory.grn.create', 'inventory.grn.update'], statuses: ['draft', 'submitted', 'posted', 'closed', 'cancelled'],
-        line: { destinationLocation: 'warehouse', unitCost: true },
+        line: { destinationLocation: 'required', unitCost: true },
     },
     transfer: {
         type: 'transfer', endpoint: 'transfers', base: '/inventory/transfers', module: 'inventory.transfers', title: 'Stock Transfers', noun: 'transfer',
-        description: 'Moves between warehouses, locations and departments. Issued stock stays In Transit until received; shortages remain visible.',
+        description: 'Moves between storage locations, departments and production areas. Issued stock stays In Transit until received; shortages remain visible.',
         createPermission: ['inventory.transfers.create'], statuses: ['draft', 'submitted', 'approved', 'in_transit', 'partially_received', 'received', 'closed', 'cancelled'],
         line: { fromStatuses: ['available', 'qc_pending', 'qc_hold', 'rework', 'rejected', 'scrap'], availability: true },
     },

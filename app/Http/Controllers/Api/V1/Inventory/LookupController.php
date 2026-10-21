@@ -47,6 +47,9 @@ class LookupController extends Controller
         if ($request->filled('warehouse_id')) {
             $query->where('warehouse_id', $request->integer('warehouse_id'));
         }
+        if ($request->filled('factory_id')) {
+            $query->whereHas('warehouse', fn ($w) => $w->where('factory_id', $request->integer('factory_id')));
+        }
         if (! $request->boolean('include_inactive')) {
             $query->where('is_active', true)->whereHas('warehouse', fn ($w) => $w->where('is_active', true));
         }
@@ -60,7 +63,7 @@ class LookupController extends Controller
             $locations = $locations->filter(fn ($l) => in_array(InventoryRefs::location($l)['purpose'], $purposes, true));
         }
 
-        return response()->json(['data' => $locations->map(fn ($l) => InventoryRefs::location($l) + ['stock_purpose' => $l->stock_purpose, 'is_active' => $l->is_active])->values()]);
+        return response()->json(['data' => $locations->map(fn ($l) => InventoryRefs::location($l) + ['stock_purpose' => $l->stock_purpose, 'is_active' => $l->is_active, 'factory_id' => $l->warehouse->factory_id])->values()]);
     }
 
     public function suppliers(Request $request): JsonResponse

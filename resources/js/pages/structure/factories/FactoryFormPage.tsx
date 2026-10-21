@@ -95,7 +95,7 @@ export default function FactoryFormPage() {
                         </SelectInput>
                         {!isEdit && (
                             <div className="sm:col-span-2 lg:col-span-3">
-                                <Toggle label="Active" description="Inactive factories cannot receive new departments, warehouses or assignments." checked={form.is_active} onChange={(v) => setForm((f) => ({ ...f, is_active: v }))} />
+                                <Toggle label="Active" description="Inactive factories cannot receive new departments, storage locations or assignments." checked={form.is_active} onChange={(v) => setForm((f) => ({ ...f, is_active: v }))} />
                             </div>
                         )}
                     </CardBody>
