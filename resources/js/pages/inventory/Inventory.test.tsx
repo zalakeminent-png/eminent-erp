@@ -93,6 +93,24 @@ describe('inventory dashboard', () => {
     });
 });
 
+describe('inventory dashboard location filter', () => {
+    it('is enabled and lists locations without choosing a warehouse first', async () => {
+        const empty = {
+            active_items: 0, items_with_available_stock: 0, valuation: { known_value: '0', unvalued_balances: 0 }, stock_by_uom: [], groups: [],
+            rejected: [], scrap: [], qc_pending: [], low_stock: { count: 0, items: [] }, recent_movements: [],
+            pending: { goods_receipts: 0, transfers: 0, material_issues: 0, adjustments_awaiting_approval: 0 },
+        };
+        get.mockImplementation((url: string) => url === '/inventory/dashboard' ? Promise.resolve({ data: { data: empty } }) : baseGet(url));
+        renderWithAuth(<InventoryDashboardPage />, { user: makeUser(['inventory.dashboard.view']) });
+        const select = screen.getByLabelText('Location');
+        expect(select).toBeEnabled();
+        expect(await within(select).findByRole('option', { name: 'RMS / R1' })).toBeInTheDocument();
+
+        await userEvent.selectOptions(select, '31');
+        await waitFor(() => expect(get).toHaveBeenCalledWith('/inventory/dashboard', expect.objectContaining({ params: expect.objectContaining({ location_id: '31' }) })));
+    });
+});
+
 describe('goods receipt editor', () => {
     it('submits header and lines with base UOM default', async () => {
         post.mockResolvedValue({ data: { data: { id: 3, document_number: 'GRN-000003' } } });

@@ -37,7 +37,7 @@ function Stat({ label, value, hint }: { label: string; value: React.ReactNode; h
 export default function InventoryDashboardPage() {
     const lookups = useLookups();
     const [filters, setFilters] = useState({ factory_id: '', department_id: '', warehouse_id: '', location_id: '', category_id: '', date_from: '', date_to: '' });
-    const locations = useLocations(filters.warehouse_id ? { warehouse_id: filters.warehouse_id } : null);
+    const locations = useLocations({ warehouse_id: filters.warehouse_id || undefined });
     const categories = useApi<{ data: { id: number; code: string; name: string }[] }>('/item-categories', { all: 1 });
     const { data, loading, error } = useApi<{ data: Dashboard }>('/inventory/dashboard', filters);
     const set = (key: keyof typeof filters, value: string) => setFilters((f) => ({ ...f, [key]: value, ...(key === 'warehouse_id' ? { location_id: '' } : {}) }));
@@ -61,9 +61,9 @@ export default function InventoryDashboardPage() {
                         <option value="">All warehouses</option>
                         {lookups.data?.data.warehouses.map((w) => <option key={w.id} value={w.id}>{w.code} — {w.name}</option>)}
                     </select>
-                    <select aria-label="Location" value={filters.location_id} disabled={!filters.warehouse_id} onChange={(e) => set('location_id', e.target.value)} className={filterInputClass}>
+                    <select aria-label="Location" value={filters.location_id} onChange={(e) => set('location_id', e.target.value)} className={filterInputClass}>
                         <option value="">All locations</option>
-                        {locations.data?.data.map((l) => <option key={l.id} value={l.id}>{l.code}</option>)}
+                        {locations.data?.data.map((l) => <option key={l.id} value={l.id}>{filters.warehouse_id ? l.code : `${l.warehouse_code} / ${l.code}`}</option>)}
                     </select>
                     <select aria-label="Item category" value={filters.category_id} onChange={(e) => set('category_id', e.target.value)} className={filterInputClass}>
                         <option value="">All categories</option>
