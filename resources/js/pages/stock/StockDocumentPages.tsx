@@ -14,8 +14,8 @@ import { useToast } from '@/components/ui/Toast';
 import { api, errorMessage, fieldErrors } from '@/lib/api';
 import { formatDate, formatDateTime } from '@/lib/format';
 import type { PaginationMeta } from '@/types';
-import { FilterBar, SearchInput, filterInputClass, useListParams } from '@/pages/structure/components/ListControls';
-import { DocStatusBadge, ExportButton, FormField, SelectField, SkuDetails, SkuPicker, VendorCheckBadge, VendorPicker, formatQty, useStockLookups } from './components';
+import { SearchInput, filterInputClass, useListParams } from '@/pages/structure/components/ListControls';
+import { DocStatusBadge, ExportButton, FormField, HeaderActions, StockFilters, SelectField, SkuDetails, SkuPicker, VendorCheckBadge, VendorPicker, formatQty, useStockLookups } from './components';
 import type { DocType, Sku, StockDocument, Vendor } from './types';
 
 export interface DocConfig {
@@ -65,14 +65,14 @@ export function StockDocumentListPage({ config }: { config: DocConfig }) {
         <>
             <PageHeader title={config.title} description={config.description}
                 actions={
-                    <div className="flex flex-wrap gap-2">
+                    <HeaderActions>
                         {t === 'opening' && <ButtonLink to="/inventory/stock" variant="secondary">Stock Overview</ButtonLink>}
                         {can(`${config.module}.export`) && <ExportButton url={config.endpoint} params={params} name={`${t}-material`} />}
                         {can(`${config.module}.create`) && <ButtonLink to={`${config.base}/new`} icon={<Plus className="h-4 w-4" />}>New {config.noun}</ButtonLink>}
-                    </div>
+                    </HeaderActions>
                 } />
             <Card>
-                <FilterBar>
+                <StockFilters>
                     <SearchInput value={search} onChange={(v) => { setSearch(v); list.update({ search: v }); }} placeholder="Search number, SKU, product, reference or job no." />
                     <select aria-label="Filter by status" value={list.get('status')} onChange={(e) => list.update({ status: e.target.value })} className={filterInputClass}>
                         <option value="">All statuses</option>
@@ -93,7 +93,7 @@ export function StockDocumentListPage({ config }: { config: DocConfig }) {
                     )}
                     <input type="date" aria-label="From date" value={list.get('date_from')} onChange={(e) => list.update({ date_from: e.target.value })} className={filterInputClass} />
                     <input type="date" aria-label="To date" value={list.get('date_to')} onChange={(e) => list.update({ date_to: e.target.value })} className={filterInputClass} />
-                </FilterBar>
+                </StockFilters>
                 {error ? <div className="p-4"><Alert tone="danger">{error}</Alert></div> : loading && !data ? <LoadingBlock /> : data && data.data.length === 0 ? (
                     <EmptyState icon={<FileText className="h-6 w-6" />} title={list.hasFilters || vendorId ? `No ${config.noun}s match your filters` : `No ${config.noun}s yet`} />
                 ) : data ? (
@@ -393,12 +393,12 @@ export function StockDocumentDetailsPage({ config }: { config: DocConfig }) {
         <>
             <PageHeader title={`${config.title.split(' ')[0]} ${d.number}`} breadcrumb={<Link to={config.base} className="hover:underline">{config.title}</Link>}
                 actions={
-                    <div className="flex flex-wrap gap-2">
+                    <HeaderActions>
                         {d.allowed_actions.includes('edit') && <ButtonLink to={`${config.base}/${d.id}/edit`} variant="secondary" icon={<Pencil className="h-4 w-4" />}>Edit draft</ButtonLink>}
                         {d.allowed_actions.includes('cancel') && <Button variant="secondary" onClick={() => setPending('cancel')}>Cancel draft</Button>}
                         {d.allowed_actions.includes('post') && <Button icon={t === 'outward' ? <ArrowUpFromLine className="h-4 w-4" /> : <ArrowDownToLine className="h-4 w-4" />} onClick={() => setPending('post')}>Post</Button>}
                         {d.allowed_actions.includes('reverse') && <Button variant="danger" onClick={() => setPending('reverse')}>Reverse</Button>}
-                    </div>
+                    </HeaderActions>
                 } />
             {d.status === 'draft' && <Alert tone="info" className="mb-4">This is a draft. It does not affect stock until it is posted.</Alert>}
             {d.status === 'reversed' && <Alert tone="warning" className="mb-4">This entry was reversed; its stock effect has been undone. It stays here for the record.</Alert>}

@@ -14,8 +14,8 @@ import { useToast } from '@/components/ui/Toast';
 import { api, errorMessage, fieldErrors } from '@/lib/api';
 import { cx, formatDate } from '@/lib/format';
 import type { PaginationMeta } from '@/types';
-import { FilterBar, SearchInput, filterInputClass, useListParams } from '@/pages/structure/components/ListControls';
-import { ExportButton, ImportDialog, SkuPicker, VendorPicker, formatQty } from './components';
+import { SearchInput, filterInputClass, useListParams } from '@/pages/structure/components/ListControls';
+import { ExportButton, HeaderActions, ImportDialog, SkuPicker, StockFilters, VendorPicker, formatQty } from './components';
 import type { Mapping, Sku, Vendor } from './types';
 
 function Tabs() {
@@ -64,15 +64,15 @@ export function VendorListPage() {
         <>
             <PageHeader title="Vendor Master" description="Register each vendor once and record which SKUs they supply. The mapping drives the vendor check on inward entries."
                 actions={
-                    <div className="flex flex-wrap gap-2">
+                    <HeaderActions>
                         {can('vendors.export') && <ExportButton url="/vendors" params={params} name="vendor-master" />}
                         {can('vendors.import') && <Button variant="secondary" icon={<Upload className="h-4 w-4" />} onClick={() => setImporting(true)}>Import</Button>}
                         {can('vendors.create') && <Button icon={<Plus className="h-4 w-4" />} onClick={() => setEditing('new')}>Add vendor</Button>}
-                    </div>
+                    </HeaderActions>
                 } />
             <Tabs />
             <Card>
-                <FilterBar>
+                <StockFilters>
                     <SearchInput value={search} onChange={(v) => { setSearch(v); list.update({ search: v }); }} placeholder="Search name, code, contact or city" />
                     <select aria-label="Filter by status" value={list.get('status')} onChange={(e) => list.update({ status: e.target.value })} className={filterInputClass}>
                         <option value="">All statuses</option>
@@ -80,7 +80,7 @@ export function VendorListPage() {
                         <option value="inactive">Inactive</option>
                     </select>
                     <div className="lg:min-w-[260px]"><SkuPicker label="Supplies SKU" value={skuFilter} onChange={setSkuFilter} /></div>
-                </FilterBar>
+                </StockFilters>
                 {error ? <div className="p-4"><Alert tone="danger">{error}</Alert></div> : loading && !data ? <LoadingBlock /> : data && data.data.length === 0 ? (
                     <EmptyState icon={<Truck className="h-6 w-6" />} title={list.hasFilters || skuFilter ? 'No vendors match your filters' : 'No vendors yet'} />
                 ) : data ? (
@@ -265,15 +265,15 @@ export function VendorMappingPage() {
         <>
             <PageHeader title="Vendor Master" description="One vendor can supply many SKUs, and one SKU can come from many vendors. Product names come from SKU Master."
                 actions={
-                    <div className="flex flex-wrap gap-2">
+                    <HeaderActions>
                         {can('vendors.export') && <ExportButton url="/vendor-skus" params={params} name="vendor-sku-mapping" />}
                         {can('vendor-skus.import') && <Button variant="secondary" icon={<Upload className="h-4 w-4" />} onClick={() => setImporting(true)}>Import mappings</Button>}
                         {can('vendor-skus.create') && <Button icon={<Link2 className="h-4 w-4" />} onClick={() => setAdding(true)}>Map SKUs to vendor</Button>}
-                    </div>
+                    </HeaderActions>
                 } />
             <Tabs />
             <Card>
-                <FilterBar>
+                <StockFilters>
                     <SearchInput value={search} onChange={(v) => { setSearch(v); list.update({ search: v }); }} placeholder="Search vendor, SKU or product" />
                     <div className="lg:min-w-[240px]"><VendorPicker label="Vendor" value={vendor} onChange={setVendor} /></div>
                     <div className="lg:min-w-[240px]"><SkuPicker label="SKU" value={sku} onChange={setSku} /></div>
@@ -282,7 +282,7 @@ export function VendorMappingPage() {
                         <option value="active">Active</option>
                         <option value="inactive">Inactive</option>
                     </select>
-                </FilterBar>
+                </StockFilters>
                 {error ? <div className="p-4"><Alert tone="danger">{error}</Alert></div> : loading && !data ? <LoadingBlock /> : data ? (
                     <div className={loading ? 'opacity-60' : undefined}>
                         <MappingTable rows={data.data} showVendor onChanged={reload} empty={list.hasFilters || vendor || sku ? 'No mappings match your filters.' : 'No vendor-SKU mappings yet.'} />

@@ -12,8 +12,8 @@ import { TextInput } from '@/components/ui/Form';
 import { useToast } from '@/components/ui/Toast';
 import { api, errorMessage, fieldErrors } from '@/lib/api';
 import type { PaginationMeta } from '@/types';
-import { FilterBar, SearchInput, filterInputClass, useListParams } from '@/pages/structure/components/ListControls';
-import { ExportButton, ImportDialog, formatQty } from './components';
+import { SearchInput, filterInputClass, useListParams } from '@/pages/structure/components/ListControls';
+import { ExportButton, HeaderActions, ImportDialog, StockFilters, formatQty } from './components';
 import type { Mapping, Sku } from './types';
 
 interface SkuList {
@@ -55,14 +55,14 @@ export default function SkuMasterPage() {
         <>
             <PageHeader title="SKU Master" description="Every product you keep in stock. SKU codes are unique; deactivated SKUs keep their history but cannot be used for new entries."
                 actions={
-                    <div className="flex flex-wrap gap-2">
+                    <HeaderActions>
                         {can('skus.export') && <ExportButton url="/skus" params={params} name="sku-master" />}
                         {can('skus.import') && <Button variant="secondary" icon={<Upload className="h-4 w-4" />} onClick={() => setImporting(true)}>Import</Button>}
                         {can('skus.create') && <Button icon={<Plus className="h-4 w-4" />} onClick={() => setEditing('new')}>Add SKU</Button>}
-                    </div>
+                    </HeaderActions>
                 } />
             <Card>
-                <FilterBar>
+                <StockFilters>
                     <SearchInput value={search} onChange={(v) => { setSearch(v); list.update({ search: v }); }} placeholder="Search SKU or product name" />
                     <select aria-label="Filter by category" value={list.get('category')} onChange={(e) => list.update({ category: e.target.value })} className={filterInputClass}>
                         <option value="">All categories</option>
@@ -77,7 +77,7 @@ export default function SkuMasterPage() {
                         <option value="active">Active</option>
                         <option value="inactive">Inactive</option>
                     </select>
-                </FilterBar>
+                </StockFilters>
                 {error ? <div className="p-4"><Alert tone="danger">{error}</Alert></div> : loading && !data ? <LoadingBlock /> : data && data.data.length === 0 ? (
                     <EmptyState icon={<Package className="h-6 w-6" />} title={list.hasFilters ? 'No SKUs match your filters' : 'No SKUs yet'}
                         description={list.hasFilters ? undefined : 'Add SKUs one by one or import your existing SKU list from a CSV file.'} />

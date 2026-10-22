@@ -37,6 +37,16 @@ export function VendorCheckBadge({ mapped }: { mapped: boolean | null }) {
     return mapped ? <Badge tone="success">Mapped</Badge> : <Badge tone="danger">⚠ Not mapped</Badge>;
 }
 
+/** Header buttons stay on one row; the page description wraps instead. */
+export function HeaderActions({ children }: { children: ReactNode }) {
+    return <div className="flex shrink-0 flex-wrap gap-2 sm:flex-nowrap">{children}</div>;
+}
+
+/** Compact filter grid: search spans two columns, other filters share the row. */
+export function StockFilters({ children }: { children: ReactNode }) {
+    return <div className="grid grid-cols-1 items-end gap-3 border-b border-slate-200 p-4 sm:grid-cols-2 lg:grid-cols-4 [&>*:first-child]:sm:col-span-2">{children}</div>;
+}
+
 export function useStockLookups() {
     return useApi<{ data: Lookups }>('/stock/lookups');
 }

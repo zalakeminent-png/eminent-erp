@@ -11,8 +11,8 @@ import { Pagination, SortableTh, Table, Td, Th } from '@/components/ui/Table';
 import { LoadingBlock } from '@/components/ui/Spinner';
 import { cx, formatDateTime } from '@/lib/format';
 import type { PaginationMeta } from '@/types';
-import { FilterBar, SearchInput, filterInputClass, useListParams } from '@/pages/structure/components/ListControls';
-import { ExportButton, StockStatusBadge, formatQty, useStockLookups } from './components';
+import { SearchInput, filterInputClass, useListParams } from '@/pages/structure/components/ListControls';
+import { ExportButton, HeaderActions, StockFilters, StockStatusBadge, formatQty, useStockLookups } from './components';
 import type { StockRow } from './types';
 
 export default function StockOverviewPage() {
@@ -38,13 +38,13 @@ export default function StockOverviewPage() {
             <PageHeader title="Stock Overview"
                 description="Live Stock Balance = Opening Stock + Total Inward − Total Rejected − Total Outward. Calculated from posted entries only; it cannot be edited directly."
                 actions={
-                    <div className="flex flex-wrap gap-2">
+                    <HeaderActions>
                         {can('stock-overview.export') && <ExportButton url="/stock/overview" params={params} name="live-stock" />}
                         {can('opening-stock.view') && <ButtonLink to="/inventory/opening-stock" variant="secondary">Opening stock</ButtonLink>}
-                    </div>
+                    </HeaderActions>
                 } />
             <Card>
-                <FilterBar>
+                <StockFilters>
                     <SearchInput value={search} onChange={(v) => { setSearch(v); list.update({ search: v }); }} placeholder="Search SKU or product name" />
                     {(l?.factories.length ?? 0) > 1 && (
                         <select aria-label="Factory" value={list.get('factory_id')} onChange={(e) => list.update({ factory_id: e.target.value, location_id: '' })} className={filterInputClass}>
@@ -73,7 +73,7 @@ export default function StockOverviewPage() {
                     <label className="flex items-center gap-2 text-sm text-slate-600">
                         <input type="checkbox" checked={list.get('include_inactive') === '1'} onChange={(e) => list.update({ include_inactive: e.target.checked ? '1' : '' })} /> Include inactive SKUs
                     </label>
-                </FilterBar>
+                </StockFilters>
                 {error ? <div className="p-4"><Alert tone="danger">{error}</Alert></div> : loading && !data ? <LoadingBlock /> : data && data.data.length === 0 ? (
                     <EmptyState icon={<PackageSearch className="h-6 w-6" />} title={list.hasFilters ? 'No SKUs match your filters' : 'No SKUs yet'}
                         description={list.hasFilters ? undefined : 'Add products in SKU Master; they appear here with zero stock until entries are posted.'} />
