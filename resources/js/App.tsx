@@ -17,6 +17,7 @@ import RoleDetailsPage from '@/pages/roles/RoleDetailsPage';
 import RolePermissionsPage from '@/pages/roles/RolePermissionsPage';
 import ActivityLogPage from '@/pages/activity/ActivityLogPage';
 import NotFoundPage from '@/pages/NotFoundPage';
+import { stockRoutes } from '@/pages/stock/StockRoutes';
 import FactoryStructurePage from '@/pages/structure/FactoryStructurePage';
 import StructureTypesPage from '@/pages/structure/StructureTypesPage';
 import FactoryListPage from '@/pages/structure/factories/FactoryListPage';
@@ -68,6 +69,8 @@ export default function App() {
 
                         <Route path="activity-logs" element={<RequirePermission permission="activity-logs.view"><ActivityLogPage /></RequirePermission>} />
                     </Route>
+
+                    {stockRoutes()}
 
                     <Route path="factory-setup">
                         <Route path="structure" element={<RequirePermission permission="factory-structure.view"><FactoryStructurePage /></RequirePermission>} />

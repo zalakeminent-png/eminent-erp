@@ -1,4 +1,7 @@
-import { Building, Building2, Factory, History, LayoutDashboard, ListTree, MapPin, Network, Settings, ShieldCheck, Tags, Users, type LucideIcon } from 'lucide-react';
+import {
+    ArrowDownToLine, ArrowUpFromLine, Boxes, Building, Building2, Factory, History, LayoutDashboard, ListTree, MapPin, Network, Package, PackageSearch,
+    Settings, ShieldCheck, Tags, Truck, Users, type LucideIcon,
+} from 'lucide-react';
 
 export interface NavLinkItem {
     label: string;
@@ -23,6 +26,17 @@ export type NavItem = NavLinkItem | NavGroup;
  */
 export const navigation: NavItem[] = [
     { label: 'Dashboard', to: '/', icon: LayoutDashboard, permission: 'dashboard.view', end: true },
+    {
+        label: 'Inventory',
+        icon: Package,
+        children: [
+            { label: 'Stock Overview', to: '/inventory/stock', icon: PackageSearch, permission: 'stock-overview.view' },
+            { label: 'Inward Material', to: '/inventory/inward', icon: ArrowDownToLine, permission: 'inward.view' },
+            { label: 'Outward Material', to: '/inventory/outward', icon: ArrowUpFromLine, permission: 'outward.view' },
+            { label: 'SKU Master', to: '/inventory/skus', icon: Boxes, permission: 'skus.view' },
+            { label: 'Vendor Master', to: '/inventory/vendors', icon: Truck, permission: 'vendors.view' },
+        ],
+    },
     {
         label: 'Factory Setup',
         icon: ListTree,

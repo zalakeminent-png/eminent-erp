@@ -132,5 +132,7 @@ Route::prefix('v1')->group(function () {
 
         Route::get('lookups/users', [LookupController::class, 'users'])
             ->middleware('permission:departments.assign-managers|departments.assign-users|departments.create|warehouses.create|warehouses.update');
+
+        require __DIR__.'/stock.php';
     });
 });

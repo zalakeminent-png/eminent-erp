@@ -90,6 +90,15 @@ return [
             'actions' => ['view', 'create', 'update'],
         ],
 
+        // ---- Stock management ----------------------------------------------
+        'stock-overview' => ['label' => 'Stock Overview', 'group' => 'Inventory', 'actions' => ['view', 'export']],
+        'opening-stock' => ['label' => 'Opening Stock', 'group' => 'Inventory', 'actions' => ['view', 'create', 'update', 'post', 'reverse']],
+        'skus' => ['label' => 'SKU Master', 'group' => 'Inventory', 'actions' => ['view', 'create', 'update', 'deactivate', 'import', 'export']],
+        'vendors' => ['label' => 'Vendor Master', 'group' => 'Inventory', 'actions' => ['view', 'create', 'update', 'deactivate', 'import', 'export']],
+        'vendor-skus' => ['label' => 'Vendor-SKU Mapping', 'group' => 'Inventory', 'actions' => ['view', 'create', 'update', 'delete', 'import']],
+        'inward' => ['label' => 'Inward Material', 'group' => 'Inventory', 'actions' => ['view', 'create', 'update', 'post', 'reverse', 'export', 'override-vendor-check']],
+        'outward' => ['label' => 'Outward Material', 'group' => 'Inventory', 'actions' => ['view', 'create', 'update', 'post', 'reverse', 'export']],
+
         // ---- Reserved namespaces for future modules (no functionality yet)
         'orders' => [
             'label' => 'Order Sheet',

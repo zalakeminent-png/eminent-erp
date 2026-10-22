@@ -121,6 +121,20 @@ The Master Data (Module 3) and Inventory (Module 4) modules were removed from th
 unchanged; user and department deletion still respect those records. The code can be restored
 from git history if needed.
 
+## Inventory (stock management)
+
+SKU Master, Vendor Master (+ vendor-SKU mapping), Inward Material, Outward Material, Opening Stock and
+Stock Overview (`routes/stock.php`, `app/Services/Stock`, `resources/js/pages/stock`).
+
+- Tables: `skus`, `vendors`, `vendor_skus`, `stock_documents`, `stock_ledger_entries` (append-only),
+  `stock_levels` (cached balance per SKU + storage location).
+- Only `App\Services\Stock\StockPostingService` changes stock: it locks the document and the balance row,
+  refuses negative stock, and reverses with compensating entries.
+- Live = opening + inward received − rejected − outward, from posted entries only.
+- Import/export is CSV (Excel: Save As → CSV).
+- Setup on an existing install: `php artisan migrate` then `php artisan db:seed --class=StockSeeder`
+  (idempotent; Admin gets all new permissions, other core roles get recommended access once).
+
 ## Adding a future module's permissions
 
 1. Register the module and its applicable actions in `config/erp.php` → `modules`.

@@ -9,6 +9,7 @@ This guide explains how to use the parts of the ERP that are currently available
 5. [First-time setup: recommended order](#5-first-time-setup-recommended-order)
 6. [Rules that protect your data](#6-rules-that-protect-your-data)
 7. [Common questions](#7-common-questions)
+8. [Inventory](#8-inventory) — Stock Overview, SKU Master, Vendor Master, Inward Material, Outward Material
 
 > **What you see depends on your role.** The sidebar only shows the menus your role allows, and
 > buttons such as *Add*, *Edit*, *Deactivate* or *Delete* only appear if you have permission for
@@ -332,3 +333,102 @@ work. Activate it first if it is still needed.
 
 **I was signed out unexpectedly.** Sessions end after about 2 hours of inactivity, after a password
 change on another device, or when an administrator deactivates your account.
+
+---
+
+## 8. Inventory
+
+The **Inventory** menu tracks how much of each product (SKU) you hold, where, and why it changed.
+Everything is calculated from *posted* entries — nobody types a stock number directly.
+
+> **Live Stock Balance = Opening Stock + Total Inward − Total Rejected − Total Outward**
+>
+> Example: opening 100, inward received 50 of which 5 rejected, outward 20 → live stock **125**.
+
+### 8.1 SKU Master
+Every product you keep in stock.
+
+| Field | Notes |
+|---|---|
+| SKU | Required and unique, e.g. `ET-WTS001-316`. |
+| Product name | Required. Shown automatically wherever the SKU is chosen. |
+| Category, Material, Size | Optional (e.g. Stud, 316, 35MM). Used for filters. |
+| Unit | Optional (PCS, KG …), shown next to quantities. |
+| Reorder level | Optional. Stock at or below it shows **LOW STOCK**. |
+
+- **Add SKU**, ✏️ edit, ⏻ deactivate/activate. A deactivated SKU keeps all its history but cannot be
+  used for new entries or mappings.
+- **Import**: download the template, fill it in Excel, *Save As → CSV*, then **Check file** (shows
+  every row's result without saving) and **Import**. Existing SKU codes are skipped, never changed.
+- **Export** downloads the filtered list as CSV.
+
+### 8.2 Vendor Master
+**Vendors tab** — register each vendor **once** (a code such as `VEN-0001` is created
+automatically). Fields: vendor name (required, unique), contact person, phone, email, city, address,
+notes. Search by name, code, contact or city; filter by status or by a SKU they supply. Click a
+vendor to see the SKUs they supply and their recent inward entries.
+
+**Vendor-SKU Mapping tab** — records which SKUs each vendor supplies.
+- One vendor can supply many SKUs and one SKU can come from many vendors.
+- **Map SKUs to vendor**: pick the vendor, add one or more SKUs, save. The product name always comes
+  from SKU Master. Duplicate mappings are refused; inactive vendors/SKUs cannot be mapped.
+- A mapping can be deactivated or removed. Past inward entries keep the vendor check they had.
+- **Import mappings** (CSV: Vendor Name, SKU Supplied): both must already exist — unknown SKUs are
+  reported as errors, never created.
+
+Deactivate vendors instead of deleting them, so their history stays complete.
+
+### 8.3 Inward Material
+Material received (from a vendor or production).
+
+1. **New inward entry** → date, factory (chosen automatically if you have only one), **storage
+   location**, **vendor**, **SKU** (product name, category and material fill in automatically).
+2. Enter **received** and **rejected** quantities. **Accepted** = received − rejected is calculated;
+   only the accepted quantity is added to stock. Rejected quantity is shown separately in reports.
+3. Optional: job no., vendor reference / invoice no., remarks.
+4. **Save draft** (no stock effect) or **Save & post**. A supervisor can also open the draft and
+   click **Post**.
+
+**Vendor check:** if the vendor is not mapped to the SKU, a warning appears and the entry cannot be
+posted normally. Add the mapping in Vendor Master, or a user with the *override vendor check*
+permission can post it by giving a reason; it is then marked **⚠ Not mapped**.
+
+### 8.4 Outward Material
+Material going out — production use, job work, samples, dispatch.
+
+1. **New outward entry** → date, factory, storage location, SKU. **Available now** shows the current
+   stock of that SKU at that location.
+2. Enter the **issue quantity**, and where applicable the department, recipient, party/vendor (job
+   work), job no. and purpose/reference.
+3. **Save draft** or **Save & post**. Stock can never go below zero: if two people try to issue the
+   same stock at the same time, the second is refused with the quantity still available.
+
+### 8.5 Posting, reversing and cancelling
+- **Draft** — can be edited or cancelled; does not affect stock.
+- **Posted** — stock updated. Posted entries cannot be edited or deleted.
+- **Reverse** (posted entries, with a reason) — undoes the stock effect with a correcting movement.
+  The entry stays in the list marked *Reversed*. Reversing an inward is refused if that stock has
+  already been issued.
+- **Cancel** (drafts only) — the draft is kept in the list as *Cancelled*.
+
+### 8.6 Stock Overview
+One row per SKU — the same columns as the Live Stock Sheet: **Opening Stock, Total Inward, Total
+Outward, Total Rejected, Live Stock Balance, Reorder Level, Status**.
+
+- **Status**: **OK** · **LOW STOCK** (at or below the reorder level, or zero/negative when no reorder
+  level is set) · **Reorder level not set**.
+- Filters: search, factory, storage location (includes its child locations), category, material,
+  status, and *include inactive SKUs*. SKUs with zero stock are listed too.
+- Click the 🕘 icon for a SKU's **history**: every posted movement with running balance, and shortcuts
+  to set opening stock or record inward/outward for that SKU.
+- **Export** downloads the current view as CSV.
+
+**Opening stock** (button on Stock Overview): enter the starting quantity of a SKU at a location once,
+before other entries. It follows the same draft → post flow. A second opening entry for the same SKU
+and location is refused once stock entries exist (reverse the wrong one first).
+
+### 8.7 Who can do what
+Permissions are set per role in **Roles & Permissions** (group *Inventory*): Stock Overview, Opening
+Stock, SKU Master, Vendor Master, Vendor-SKU Mapping, Inward Material and Outward Material — each
+with view / create / update / post / reverse / import / export actions as applicable, plus *Inward →
+override vendor check*. Users only see stock and entries of the factories they are assigned to.
