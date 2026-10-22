@@ -15,7 +15,7 @@ import { api, errorMessage, fieldErrors } from '@/lib/api';
 import { formatDate, formatDateTime } from '@/lib/format';
 import type { PaginationMeta } from '@/types';
 import { SearchInput, filterInputClass, useListParams } from '@/pages/structure/components/ListControls';
-import { DocStatusBadge, ExportButton, FormField, HeaderActions, StockFilters, SelectField, SkuDetails, SkuPicker, VendorCheckBadge, VendorPicker, formatQty, useStockLookups } from './components';
+import { DeleteButton, DocStatusBadge, ExportButton, FormField, HeaderActions, StockFilters, SelectField, SkuDetails, SkuPicker, VendorCheckBadge, VendorPicker, formatQty, useStockLookups } from './components';
 import type { DocType, Sku, StockDocument, Vendor } from './types';
 
 export interface DocConfig {
@@ -43,6 +43,17 @@ export const DOC_CONFIGS: Record<DocType, DocConfig> = {
     },
 };
 
+/** Confirmation text for deleting an entry, depending on its status. */
+function deleteMessage(d: StockDocument) {
+    if (d.status === 'posted') {
+        return <>Delete posted entry <strong>{d.number}</strong>? Its stock effect is removed and stock is recalculated (refused if that stock was already used). The entry disappears from the list; a full copy stays in Activity Logs.</>;
+    }
+    if (d.status === 'reversed') {
+        return <>Delete reversed entry <strong>{d.number}</strong>? It no longer affects stock; it will be hidden from the list and kept in Activity Logs.</>;
+    }
+    return <>Delete <strong>{d.number}</strong>? It never affected stock and will be removed.</>;
+}
+
 // ---- List -------------------------------------------------------------------
 
 export function StockDocumentListPage({ config }: { config: DocConfig }) {
@@ -58,7 +69,7 @@ export function StockDocumentListPage({ config }: { config: DocConfig }) {
         search: debounced, status: list.get('status'), factory_id: list.get('factory_id'), vendor_id: vendorId, date_from: list.get('date_from'),
         date_to: list.get('date_to'), vendor_check: list.get('vendor_check'), sort: list.sort, direction: list.direction,
     };
-    const { data, loading, error } = useApi<{ data: StockDocument[]; meta: PaginationMeta }>(config.endpoint, { ...params, page: list.page, per_page: 25 });
+    const { data, loading, error, reload } = useApi<{ data: StockDocument[]; meta: PaginationMeta }>(config.endpoint, { ...params, page: list.page, per_page: 25 });
     const t = config.type;
 
     return (
@@ -77,6 +88,7 @@ export function StockDocumentListPage({ config }: { config: DocConfig }) {
                     <select aria-label="Filter by status" value={list.get('status')} onChange={(e) => list.update({ status: e.target.value })} className={filterInputClass}>
                         <option value="">All statuses</option>
                         {['draft', 'posted', 'reversed', 'cancelled'].map((s) => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+                        {can(`${config.module}.delete`) && <option value="deleted">Deleted</option>}
                     </select>
                     {(lookups.data?.data.factories.length ?? 0) > 1 && (
                         <select aria-label="Filter by factory" value={list.get('factory_id')} onChange={(e) => list.update({ factory_id: e.target.value })} className={filterInputClass}>
@@ -137,7 +149,9 @@ export function StockDocumentListPage({ config }: { config: DocConfig }) {
                                         <Td><DocStatusBadge status={d.status} /></Td>
                                         <Td className="whitespace-nowrap text-right">
                                             <ButtonLink to={`${config.base}/${d.id}`} variant="ghost" size="sm" aria-label={`View ${d.number}`} icon={<Eye className="h-4 w-4" />} />
-                                            {d.allowed_actions.includes('edit') && <ButtonLink to={`${config.base}/${d.id}/edit`} variant="ghost" size="sm" aria-label={`Edit ${d.number}`} icon={<Pencil className="h-4 w-4" />} />}
+                                            {(d.allowed_actions.includes('edit') || d.allowed_actions.includes('edit_posted')) && <ButtonLink to={`${config.base}/${d.id}/edit`} variant="ghost" size="sm" aria-label={`Edit ${d.number}`} icon={<Pencil className="h-4 w-4" />} />}
+                                            {d.allowed_actions.includes('delete') && <DeleteButton url={`${config.endpoint}/${d.id}`} label={d.number} onDeleted={reload}
+                                                reason={d.status === 'posted' || d.status === 'reversed' ? 'required' : 'optional'} message={deleteMessage(d)} />}
                                         </Td>
                                     </tr>
                                 ))}
@@ -173,6 +187,7 @@ export function StockDocumentFormPage({ config }: { config: DocConfig }) {
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [formError, setFormError] = useState<string | null>(null);
     const [saving, setSaving] = useState<'draft' | 'post' | null>(null);
+    const [editReason, setEditReason] = useState('');
     const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
     // One factory: select it automatically.
@@ -212,11 +227,15 @@ export function StockDocumentFormPage({ config }: { config: DocConfig }) {
         return Number.isFinite(r - j) ? Math.round((r - j) * 1000) / 1000 : 0;
     }, [form.received_qty, form.rejected_qty]);
     const available = availability.data?.data.available;
-    const overIssue = t === 'outward' && available !== undefined && form.quantity !== '' && Number(form.quantity) > Number(available);
+    const editingPosted = existing.data?.data.status === 'posted';
+    // When correcting a posted outward, its own quantity is still counted as issued.
+    const original = existing.data?.data;
+    const ownQty = editingPosted && t === 'outward' && original?.sku?.id === sku?.id && String(original?.location?.id) === form.location_id ? Number(original?.quantity ?? 0) : 0;
+    const overIssue = t === 'outward' && available !== undefined && form.quantity !== '' && Number(form.quantity) > Number(available) + ownQty;
 
     if (id && existing.loading && !existing.data) return <LoadingBlock />;
-    if (existing.data && existing.data.data.status !== 'draft') {
-        return <Alert tone="warning">Only drafts can be edited. <Link to={`${config.base}/${id}`} className="underline">Back to {existing.data.data.number}</Link></Alert>;
+    if (existing.data && existing.data.data.status !== 'draft' && !(editingPosted && existing.data.data.allowed_actions.includes('edit_posted'))) {
+        return <Alert tone="warning">This entry cannot be edited. <Link to={`${config.base}/${id}`} className="underline">Back to {existing.data.data.number}</Link></Alert>;
     }
 
     const save = async (andPost: boolean) => {
@@ -230,6 +249,7 @@ export function StockDocumentFormPage({ config }: { config: DocConfig }) {
         if (t === 'inward') Object.assign(payload, { vendor_id: vendor?.id ?? null, received_qty: form.received_qty, rejected_qty: form.rejected_qty || null });
         if (t === 'outward') Object.assign(payload, { quantity: form.quantity, department_id: form.department_id || null, recipient: form.recipient || null, vendor_id: vendor?.id ?? null });
         if (t === 'opening') Object.assign(payload, { quantity: form.quantity });
+        if (editingPosted) Object.assign(payload, { edit_reason: editReason, vendor_check_reason: editReason });
         try {
             const { data } = id ? await api.put<{ data: StockDocument }>(`${config.endpoint}/${id}`, payload) : await api.post<{ data: StockDocument }>(config.endpoint, payload);
             if (andPost) {
@@ -241,7 +261,7 @@ export function StockDocumentFormPage({ config }: { config: DocConfig }) {
                     toast.error(`Saved as draft ${data.data.number}, but not posted: ${Object.values(fe)[0] ?? errorMessage(err)}`);
                 }
             } else {
-                toast.success(`${data.data.number} saved as draft.`);
+                toast.success(editingPosted ? `${data.data.number} updated. Stock recalculated.` : `${data.data.number} saved as draft.`);
             }
             navigate(`${config.base}/${data.data.id}`);
         } catch (err) {
@@ -258,6 +278,15 @@ export function StockDocumentFormPage({ config }: { config: DocConfig }) {
             <PageHeader title={id ? `Edit ${existing.data?.data.number}` : `New ${config.noun}`} description={config.description}
                 breadcrumb={<Link to={config.base} className="hover:underline">{config.title}</Link>} />
             {formError && <Alert tone="danger" className="mb-4">{formError}</Alert>}
+            {editingPosted && (
+                <Card className="mb-4 border-amber-300">
+                    <CardBody className="space-y-3">
+                        <Alert tone="warning">This entry is <strong>posted</strong>. Saving changes corrects the stock automatically (old quantities out, new quantities in) and records the old and new values in Activity Logs. It is refused if stock would go below zero.</Alert>
+                        <TextareaInput label="Reason for the change" required rows={2} value={editReason} onChange={(e) => setEditReason(e.target.value)}
+                            error={errors.edit_reason} hint="e.g. Counted wrongly at the gate, wrong SKU selected." />
+                    </CardBody>
+                </Card>
+            )}
             <Card>
                 <CardBody className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
                     <TextInput label="Date" type="date" required value={form.document_date} max={today()} onChange={(e) => set('document_date', e.target.value)} error={errors.document_date} />
@@ -313,8 +342,10 @@ export function StockDocumentFormPage({ config }: { config: DocConfig }) {
             </Card>
             <div className="mt-4 flex flex-wrap justify-end gap-2">
                 <ButtonLink to={id ? `${config.base}/${id}` : config.base} variant="secondary">Cancel</ButtonLink>
-                <Button variant="secondary" loading={saving === 'draft'} disabled={saving !== null} onClick={() => save(false)}>Save draft</Button>
-                {can(`${config.module}.post`) && (t !== 'inward' || vendorMapped !== false) && (
+                {editingPosted ? (
+                    <Button loading={saving === 'draft'} disabled={saving !== null || overIssue || editReason.trim().length < 3} onClick={() => save(false)}>Save changes &amp; recalculate stock</Button>
+                ) : <Button variant="secondary" loading={saving === 'draft'} disabled={saving !== null} onClick={() => save(false)}>Save draft</Button>}
+                {!editingPosted && can(`${config.module}.post`) && (t !== 'inward' || vendorMapped !== false) && (
                     <Button loading={saving === 'post'} disabled={saving !== null || overIssue} onClick={() => save(true)}>Save &amp; post</Button>
                 )}
             </div>
@@ -326,6 +357,7 @@ export function StockDocumentFormPage({ config }: { config: DocConfig }) {
 
 export function StockDocumentDetailsPage({ config }: { config: DocConfig }) {
     const { id } = useParams();
+    const navigate = useNavigate();
     const toast = useToast();
     const { data, loading, error, reload } = useApi<{ data: StockDocument }>(`${config.endpoint}/${id}`);
     const [pending, setPending] = useState<'post' | 'reverse' | 'cancel' | null>(null);
@@ -387,6 +419,8 @@ export function StockDocumentDetailsPage({ config }: { config: DocConfig }) {
         { label: 'Posted', who: d.posted_by, when: d.posted_at },
         { label: `Reversed${d.reversal_reason ? ` — ${d.reversal_reason}` : ''}`, who: d.reversed_by, when: d.reversed_at },
         { label: `Cancelled${d.cancel_reason ? ` — ${d.cancel_reason}` : ''}`, who: d.cancelled_by, when: d.cancelled_at },
+        { label: `Last edited after posting (${d.edit_count}×)`, who: d.edited_by, when: d.edited_at },
+        { label: `Deleted${d.delete_reason ? ` — ${d.delete_reason}` : ''}`, who: d.deleted_by, when: d.deleted_at },
     ].filter((e) => e.when);
 
     return (
@@ -395,12 +429,17 @@ export function StockDocumentDetailsPage({ config }: { config: DocConfig }) {
                 actions={
                     <HeaderActions>
                         {d.allowed_actions.includes('edit') && <ButtonLink to={`${config.base}/${d.id}/edit`} variant="secondary" icon={<Pencil className="h-4 w-4" />}>Edit draft</ButtonLink>}
+                        {d.allowed_actions.includes('edit_posted') && <ButtonLink to={`${config.base}/${d.id}/edit`} variant="secondary" icon={<Pencil className="h-4 w-4" />}>Edit</ButtonLink>}
+                        {d.allowed_actions.includes('delete') && <DeleteButton asButton url={`${config.endpoint}/${d.id}`} label={d.number} onDeleted={() => navigate(config.base)}
+                            reason={d.status === 'posted' || d.status === 'reversed' ? 'required' : 'optional'} message={deleteMessage(d)} />}
                         {d.allowed_actions.includes('cancel') && <Button variant="secondary" onClick={() => setPending('cancel')}>Cancel draft</Button>}
                         {d.allowed_actions.includes('post') && <Button icon={t === 'outward' ? <ArrowUpFromLine className="h-4 w-4" /> : <ArrowDownToLine className="h-4 w-4" />} onClick={() => setPending('post')}>Post</Button>}
                         {d.allowed_actions.includes('reverse') && <Button variant="danger" onClick={() => setPending('reverse')}>Reverse</Button>}
                     </HeaderActions>
                 } />
             {d.status === 'draft' && <Alert tone="info" className="mb-4">This is a draft. It does not affect stock until it is posted.</Alert>}
+            {d.is_deleted && <Alert tone="danger" className="mb-4">Deleted by {d.deleted_by?.full_name ?? 'an administrator'} on {formatDateTime(d.deleted_at)}{d.delete_reason ? ` — ${d.delete_reason}` : ''}. Its stock effect was removed; it is kept here only for the record.</Alert>}
+            {d.edit_count > 0 && !d.is_deleted && <Alert tone="info" className="mb-4">Edited after posting {d.edit_count} time(s); last by {d.edited_by?.full_name} on {formatDateTime(d.edited_at)}. Old and new values are in Activity Logs.</Alert>}
             {d.status === 'reversed' && <Alert tone="warning" className="mb-4">This entry was reversed; its stock effect has been undone. It stays here for the record.</Alert>}
             <div className="grid gap-4 lg:grid-cols-3">
                 <Card className="lg:col-span-2"><CardHeader title="Entry" /><CardBody><DescriptionList items={items} /></CardBody></Card>

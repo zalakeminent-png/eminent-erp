@@ -83,6 +83,92 @@ class StockPostingService
         });
     }
 
+    /**
+     * Admin correction of a posted entry: the old stock effect is taken out
+     * and the corrected one put in (two ledger rows), stock is recalculated,
+     * and the change is logged with old and new values and the reason.
+     */
+    public function correct(StockDocument $document, array $input, User $user, string $reason, ?string $vendorCheckReason = null): StockDocument
+    {
+        $this->scope->ensureFactory($user, $document->factory_id);
+
+        return DB::transaction(function () use ($document, $input, $user, $reason, $vendorCheckReason) {
+            $document = StockDocument::query()->lockForUpdate()->findOrFail($document->id);
+            if ($document->status !== StockDocument::POSTED) {
+                throw new ConflictHttpException("Only posted entries are corrected this way; {$document->number} is {$document->status}.");
+            }
+            $data = $this->documents->validated($document->type, $input, $user);
+
+            $old = $document->replicate();
+            $old->setAttribute('id', $document->id);
+            $tracked = ['document_date', 'factory_id', 'location_id', 'sku_id', 'vendor_id', 'department_id', 'quantity', 'received_qty', 'rejected_qty', 'recipient', 'job_no', 'reference', 'remarks'];
+            $before = $this->snapshot($document, $tracked);
+
+            $document->fill($data);
+            if ($document->type === StockDocument::INWARD) {
+                $this->checkVendor($document, $user, $vendorCheckReason);
+            }
+            if ($document->type === StockDocument::OPENING) {
+                $this->checkOpening($document);
+            }
+
+            // Increases first, so a balance never dips below its final value.
+            $moves = [[$old, bcmul($old->stockEffect(), '-1', 3), true], [$document, $document->stockEffect(), false]];
+            usort($moves, fn ($a, $b) => bccomp($b[1], $a[1], 3));
+            foreach ($moves as [$doc, $effect, $reversal]) {
+                $this->apply($doc, $effect, $reversal, $user);
+            }
+
+            $document->forceFill(['edit_count' => $document->edit_count + 1, 'edited_by' => $user->id, 'edited_at' => now()])->save();
+            $changes = $this->activity->diff($before, $this->snapshot($document, $tracked));
+            $this->activity->log("stock.{$document->type}.edited", $document, ['number' => $document->number, 'reason' => $reason, 'changes' => $changes],
+                StockDocumentService::LABELS[$document->type]." {$document->number} edited after posting: {$reason}", $user);
+
+            return $document;
+        });
+    }
+
+    /**
+     * Admin deletion. Drafts/cancelled entries never touched stock and are
+     * removed. Posted entries have their stock effect reversed first; posted
+     * and reversed entries are then hidden (soft-deleted) so the stock history
+     * stays complete. A full copy is written to the activity log.
+     */
+    public function delete(StockDocument $document, User $user, ?string $reason): void
+    {
+        $this->scope->ensureFactory($user, $document->factory_id);
+
+        DB::transaction(function () use ($document, $user, $reason) {
+            $document = StockDocument::query()->lockForUpdate()->findOrFail($document->id);
+            $copy = $document->only(['id', 'type', 'number', 'status', 'document_date', 'factory_id', 'location_id', 'sku_id', 'vendor_id', 'department_id',
+                'quantity', 'received_qty', 'rejected_qty', 'recipient', 'job_no', 'reference', 'remarks', 'posted_at', 'posted_by']);
+            $label = StockDocumentService::LABELS[$document->type];
+
+            if (in_array($document->status, [StockDocument::DRAFT, StockDocument::CANCELLED], true)) {
+                $document->forceDelete();
+            } else {
+                if ($document->status === StockDocument::POSTED) {
+                    $this->apply($document, bcmul($document->stockEffect(), '-1', 3), true, $user);
+                }
+                $document->forceFill(['deleted_by' => $user->id, 'delete_reason' => $reason])->save();
+                $document->delete();
+            }
+
+            $this->activity->log("stock.{$document->type}.deleted", null, ['entry' => $copy, 'reason' => $reason],
+                "{$label} {$copy['number']} ({$copy['status']}) deleted".($reason ? ": {$reason}" : ''), $user);
+        });
+    }
+
+    /** @param list<string> $fields */
+    private function snapshot(StockDocument $document, array $fields): array
+    {
+        return collect($fields)->mapWithKeys(fn ($f) => [$f => match (true) {
+            $document->{$f} instanceof \DateTimeInterface => $document->{$f}->format('Y-m-d'),
+            in_array($f, ['quantity', 'received_qty', 'rejected_qty'], true) => StockOverview::number($document->{$f}),
+            default => $document->{$f},
+        }])->all();
+    }
+
     private function apply(StockDocument $document, string $effect, bool $reversal, User $user): void
     {
         $now = now();

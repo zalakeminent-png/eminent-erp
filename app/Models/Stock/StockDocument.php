@@ -11,14 +11,16 @@ use App\Models\WarehouseLocation;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * One inward, outward or opening-stock entry. Only posted documents affect
- * stock; posted documents are never edited, only reversed.
+ * stock. Posted documents change only through reversal, or an audited Admin
+ * correction/deletion (StockPostingService) that recalculates stock.
  */
 class StockDocument extends Model
 {
-    use BelongsToCompany, TracksAuthors;
+    use BelongsToCompany, SoftDeletes, TracksAuthors;
 
     public const INWARD = 'inward';
 
@@ -52,6 +54,7 @@ class StockDocument extends Model
             'posted_at' => 'datetime',
             'reversed_at' => 'datetime',
             'cancelled_at' => 'datetime',
+            'edited_at' => 'datetime',
         ];
     }
 
@@ -103,6 +106,16 @@ class StockDocument extends Model
     public function canceller(): BelongsTo
     {
         return $this->belongsTo(User::class, 'cancelled_by');
+    }
+
+    public function editor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'edited_by');
+    }
+
+    public function deleter(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'deleted_by');
     }
 
     public function entries(): HasMany

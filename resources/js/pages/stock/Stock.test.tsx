@@ -12,10 +12,11 @@ import { DOC_CONFIGS, StockDocumentDetailsPage, StockDocumentFormPage } from './
 const get = vi.fn();
 const post = vi.fn();
 const put = vi.fn();
+const del = vi.fn();
 
 vi.mock('@/lib/api', async (importOriginal) => {
     const actual = await importOriginal<typeof import('@/lib/api')>();
-    return { ...actual, api: { get: (...a: unknown[]) => get(...a), post: (...a: unknown[]) => post(...a), put: (...a: unknown[]) => put(...a), patch: vi.fn(), delete: vi.fn() } };
+    return { ...actual, api: { get: (...a: unknown[]) => get(...a), post: (...a: unknown[]) => post(...a), put: (...a: unknown[]) => put(...a), patch: vi.fn(), delete: (...a: unknown[]) => del(...a) } };
 });
 
 const meta = (n: number) => ({ current_page: 1, last_page: 1, per_page: 25, total: n, from: n ? 1 : null, to: n || null });
@@ -40,6 +41,7 @@ beforeEach(() => {
     get.mockReset();
     post.mockReset();
     put.mockReset();
+    del.mockReset();
     get.mockImplementation(baseGet);
 });
 
@@ -183,5 +185,54 @@ describe('vendor-SKU mapping', () => {
         await userEvent.click(await within(dialog).findByRole('option', { name: /ET-WTS008-316/ }));
         await userEvent.click(within(dialog).getByRole('button', { name: /Save 1 mapping/ }));
         expect(post).toHaveBeenCalledWith('/vendor-skus', { vendor_id: 5, sku_ids: [11] });
+    });
+});
+
+describe("admin edit and delete", () => {
+    const posted = { ...draft, status: "posted", vendor_mapped: true, allowed_actions: ["reverse", "edit_posted", "delete"], edit_count: 0, edited_by: null, edited_at: null, is_deleted: false, deleted_by: null, deleted_at: null, delete_reason: null };
+
+    it("edits a posted entry only with a reason", async () => {
+        get.mockImplementation((url: string, c) => url === "/inward/7" ? Promise.resolve({ data: { data: posted } }) : baseGet(url, c));
+        put.mockResolvedValue({ data: { data: { ...posted, id: 7, number: "INW-000007" } } });
+        renderWithAuth(<Routes><Route path="/e/:id" element={<StockDocumentFormPage config={DOC_CONFIGS.inward} />} /><Route path="/inventory/inward/:id" element={<p>Details page</p>} /></Routes>,
+            { route: "/e/7", user: makeUser(["inward.view", "inward.edit-posted"]) });
+
+        const save = await screen.findByRole("button", { name: /Save changes/ });
+        expect(screen.getByText(/This entry is/)).toBeInTheDocument();
+        expect(save).toBeDisabled();
+        const received = screen.getByLabelText(/^Received quantity/);
+        await userEvent.clear(received);
+        await userEvent.type(received, "40");
+        await userEvent.type(screen.getByLabelText(/^Reason for the change/), "Counted wrongly");
+        await userEvent.click(save);
+        expect(put).toHaveBeenCalledWith("/inward/7", expect.objectContaining({ received_qty: "40", edit_reason: "Counted wrongly" }));
+        expect(await screen.findByText("Details page")).toBeInTheDocument();
+    });
+
+    it("deletes a posted entry only with a reason", async () => {
+        get.mockImplementation((url: string, c) => url === "/inward/7" ? Promise.resolve({ data: { data: posted } }) : baseGet(url, c));
+        del.mockResolvedValue({ data: { message: "INW-000007 deleted. Stock recalculated." } });
+        renderWithAuth(<Routes><Route path="/i/:id" element={<StockDocumentDetailsPage config={DOC_CONFIGS.inward} />} /><Route path="/inventory/inward" element={<p>List page</p>} /></Routes>,
+            { route: "/i/7", user: makeUser(["inward.view", "inward.delete"]) });
+
+        await userEvent.click(await screen.findByRole("button", { name: "Delete" }));
+        const dialog = screen.getByRole("dialog");
+        const confirm = within(dialog).getByRole("button", { name: "Delete" });
+        expect(confirm).toBeDisabled();
+        await userEvent.type(within(dialog).getByLabelText("Reason"), "Duplicate entry");
+        await userEvent.click(confirm);
+        expect(del).toHaveBeenCalledWith("/inward/7", { data: { reason: "Duplicate entry" } });
+        expect(await screen.findByText("List page")).toBeInTheDocument();
+    });
+
+    it("deletes a SKU after confirmation and shows refusals", async () => {
+        get.mockImplementation((url: string, c) => url === "/skus" ? Promise.resolve({ data: { data: [sku], meta: meta(1), filters: { categories: [], materials: [] } } }) : baseGet(url, c));
+        del.mockRejectedValueOnce({ isAxiosError: true, response: { status: 409, data: { message: "SKU ET-WTS008-316 cannot be deleted because 1 stock entry uses it (INW-000001)." } } });
+        renderWithAuth(<SkuMasterPage />, { user: makeUser(["skus.view", "skus.delete"]) });
+
+        await userEvent.click(await screen.findByRole("button", { name: "Delete ET-WTS008-316" }));
+        await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Delete" }));
+        expect(del).toHaveBeenCalledWith("/skus/11", undefined);
+        expect(await screen.findByText(/cannot be deleted because 1 stock entry uses it/)).toBeInTheDocument();
     });
 });

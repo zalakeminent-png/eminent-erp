@@ -23,7 +23,7 @@ class StockDocumentController extends Controller
 {
     private const SORTABLE = ['number', 'document_date', 'status', 'created_at'];
 
-    private const RELATIONS = ['factory', 'location', 'sku', 'vendor', 'department', 'creator', 'poster', 'reverser', 'canceller'];
+    private const RELATIONS = ['factory', 'location', 'sku', 'vendor', 'department', 'creator', 'poster', 'reverser', 'canceller', 'editor', 'deleter'];
 
     public function __construct(
         private readonly StockDocumentService $documents,
@@ -45,7 +45,13 @@ class StockDocumentController extends Controller
                 ->orWhereRaw('LOWER(COALESCE(recipient, \'\')) LIKE ?', [$like])
                 ->orWhereHas('sku', fn ($s) => $s->whereRaw('LOWER(sku) LIKE ?', [$like])->orWhereRaw('LOWER(product_name) LIKE ?', [$like])));
         }
-        foreach (['status', 'factory_id', 'location_id', 'sku_id', 'vendor_id', 'department_id'] as $f) {
+        // Deleted entries are hidden from lists; Admins can show them with status=deleted.
+        if ($request->query('status') === 'deleted') {
+            $query->onlyTrashed();
+        } elseif ($request->filled('status')) {
+            $query->where('status', $request->query('status'));
+        }
+        foreach (['factory_id', 'location_id', 'sku_id', 'vendor_id', 'department_id'] as $f) {
             if ($request->filled($f)) {
                 $query->where($f, $request->query($f));
             }
@@ -75,7 +81,7 @@ class StockDocumentController extends Controller
 
     public function show(Request $request, int $id): JsonResponse
     {
-        $document = $this->find($request, $id)->load(self::RELATIONS);
+        $document = $this->find($request, $id, true)->load(self::RELATIONS);
 
         return response()->json(['data' => $this->row($document, $request->user()) + [
             'history' => $document->entries()->with('creator')->orderBy('id')->get()->map(fn ($e) => [
@@ -98,9 +104,37 @@ class StockDocumentController extends Controller
 
     public function update(Request $request, int $id): JsonResponse
     {
-        $document = $this->documents->update($this->find($request, $id), $request->all(), $request->user());
+        $document = $this->find($request, $id);
+        $module = $this->module($document->type);
+
+        // Posted entries: Admin correction with a reason; stock is recalculated.
+        if ($document->status === StockDocument::POSTED) {
+            abort_unless($request->user()->can("{$module}.edit-posted"), 403, 'You do not have permission to edit posted entries.');
+            $data = $request->validate([
+                'edit_reason' => ['required', 'string', 'min:3', 'max:500'],
+                'vendor_check_reason' => ['nullable', 'string', 'max:500'],
+            ], ['edit_reason.required' => 'Give a reason for changing a posted entry.']);
+            $document = $this->posting->correct($document, $request->except(['edit_reason', 'vendor_check_reason']), $request->user(), $data['edit_reason'], $data['vendor_check_reason'] ?? null);
+
+            return response()->json(['data' => $this->row($document->load(self::RELATIONS), $request->user()), 'message' => "{$document->number} updated. Stock recalculated."]);
+        }
+
+        abort_unless($request->user()->can("{$module}.update"), 403);
+        $document = $this->documents->update($document, $request->all(), $request->user());
 
         return response()->json(['data' => $this->row($document->load(self::RELATIONS), $request->user()), 'message' => 'Draft saved.']);
+    }
+
+    public function destroy(Request $request, int $id): JsonResponse
+    {
+        $document = $this->find($request, $id);
+        $affectsHistory = in_array($document->status, [StockDocument::POSTED, StockDocument::REVERSED], true);
+        $data = $request->validate(['reason' => [$affectsHistory ? 'required' : 'nullable', 'string', 'max:500']],
+            ['reason.required' => 'Give a reason for deleting a posted entry.']);
+        $number = $document->number;
+        $this->posting->delete($document, $request->user(), $data['reason'] ?? null);
+
+        return response()->json(['message' => $document->status === StockDocument::POSTED ? "{$number} deleted. Stock recalculated." : "{$number} deleted."]);
     }
 
     public function post(Request $request, int $id): JsonResponse
@@ -129,9 +163,9 @@ class StockDocumentController extends Controller
         return response()->json(['data' => $this->row($document->load(self::RELATIONS), $request->user()), 'message' => "{$document->number} cancelled."]);
     }
 
-    private function find(Request $request, int $id): StockDocument
+    private function find(Request $request, int $id, bool $withDeleted = false): StockDocument
     {
-        $document = StockDocument::query()->forCurrentCompany()->where('type', $this->type($request))->findOrFail($id);
+        $document = StockDocument::query()->forCurrentCompany()->when($withDeleted, fn ($q) => $q->withTrashed())->where('type', $this->type($request))->findOrFail($id);
         $this->scope->ensureFactory($request->user(), $document->factory_id);
 
         return $document;
@@ -156,7 +190,12 @@ class StockDocumentController extends Controller
             'post' => $d->status === StockDocument::DRAFT && $user->can("{$module}.post"),
             'cancel' => $d->status === StockDocument::DRAFT && $user->can("{$module}.update"),
             'reverse' => $d->status === StockDocument::POSTED && $user->can("{$module}.reverse"),
+            'edit_posted' => $d->status === StockDocument::POSTED && $user->can("{$module}.edit-posted"),
+            'delete' => $user->can("{$module}.delete"),
         ]));
+        if ($d->trashed()) {
+            $actions = [];
+        }
         $person = fn (?User $u) => $u ? ['id' => $u->id, 'full_name' => $u->full_name] : null;
 
         return [
@@ -190,6 +229,13 @@ class StockDocumentController extends Controller
             'cancelled_by' => $person($d->canceller),
             'cancelled_at' => $d->cancelled_at?->toIso8601String(),
             'cancel_reason' => $d->cancel_reason,
+            'edit_count' => $d->edit_count,
+            'edited_by' => $person($d->editor),
+            'edited_at' => $d->edited_at?->toIso8601String(),
+            'is_deleted' => $d->trashed(),
+            'deleted_by' => $person($d->deleter),
+            'deleted_at' => $d->deleted_at?->toIso8601String(),
+            'delete_reason' => $d->delete_reason,
             'allowed_actions' => $actions,
             'can_override_vendor_check' => $d->type === StockDocument::INWARD && $user->can('inward.override-vendor-check'),
         ];

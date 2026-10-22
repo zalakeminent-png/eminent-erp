@@ -13,7 +13,7 @@ import { useToast } from '@/components/ui/Toast';
 import { api, errorMessage, fieldErrors } from '@/lib/api';
 import type { PaginationMeta } from '@/types';
 import { SearchInput, filterInputClass, useListParams } from '@/pages/structure/components/ListControls';
-import { ExportButton, HeaderActions, ImportDialog, StockFilters, formatQty } from './components';
+import { DeleteButton, ExportButton, HeaderActions, ImportDialog, StockFilters, formatQty } from './components';
 import type { Mapping, Sku } from './types';
 
 interface SkuList {
@@ -109,6 +109,10 @@ export default function SkuMasterPage() {
                                         <Td className="whitespace-nowrap text-right">
                                             <Button variant="ghost" size="sm" aria-label={`View ${s.sku}`} icon={<Eye className="h-4 w-4" />} onClick={() => setViewing(s)} />
                                             {can('skus.update') && <Button variant="ghost" size="sm" aria-label={`Edit ${s.sku}`} icon={<Pencil className="h-4 w-4" />} onClick={() => setEditing(s)} />}
+                                            {can('skus.delete') && (
+                                                <DeleteButton url={`/skus/${s.id}`} label={s.sku} onDeleted={reload}
+                                                    message={<>Permanently delete <strong>{s.sku}</strong> ({s.product_name}) and its vendor mappings? This is only possible while no stock entry uses the SKU; otherwise deactivate it.</>} />
+                                            )}
                                             {can(s.is_active ? 'skus.deactivate' : 'skus.update') && (
                                                 <Button variant="ghost" size="sm" aria-label={`${s.is_active ? 'Deactivate' : 'Activate'} ${s.sku}`} onClick={() => setStatusTarget(s)}
                                                     icon={<Power className={`h-4 w-4 ${s.is_active ? 'text-red-500' : 'text-emerald-600'}`} />} />

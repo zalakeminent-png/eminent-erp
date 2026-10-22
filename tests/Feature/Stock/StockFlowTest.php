@@ -37,7 +37,7 @@ class StockFlowTest extends StockTestCase
 
         $draft = $this->postJson($this->api('inward'), $this->base(['sku_id' => $sku->id, 'vendor_id' => $vendor->id, 'received_qty' => '10']))->assertCreated()->json('data');
         $this->assertSame('draft', $draft['status']);
-        $this->assertSame(['edit', 'post', 'cancel'], $draft['allowed_actions']);
+        $this->assertSame(['edit', 'post', 'cancel', 'delete'], $draft['allowed_actions']);
         $other = $this->postJson($this->api('inward'), $this->base(['sku_id' => $sku->id, 'vendor_id' => $vendor->id, 'received_qty' => '7']))->json('data.id');
         $this->postJson($this->api("inward/{$other}/cancel"), ['reason' => 'Entered twice'])->assertOk()->assertJsonPath('data.status', 'cancelled');
         $this->postJson($this->api("inward/{$other}/post"))->assertStatus(409);
@@ -50,7 +50,8 @@ class StockFlowTest extends StockTestCase
             ->assertOk()->assertJsonPath('data.received_qty', '12');
         $this->postJson($this->api("inward/{$draft['id']}/post"))->assertOk();
         $this->postJson($this->api("inward/{$draft['id']}/post"))->assertStatus(409); // never twice
-        $this->putJson($this->api("inward/{$draft['id']}"), $this->base(['sku_id' => $sku->id, 'vendor_id' => $vendor->id, 'received_qty' => '1']))->assertStatus(409);
+        // Posted entries are never changed silently: an edit needs a reason (and edit-posted permission).
+        $this->putJson($this->api("inward/{$draft['id']}"), $this->base(['sku_id' => $sku->id, 'vendor_id' => $vendor->id, 'received_qty' => '1']))->assertJsonValidationErrors('edit_reason');
         $this->assertSame('12', $this->overviewRow($sku)['live_balance']);
     }
 

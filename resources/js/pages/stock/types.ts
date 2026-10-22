@@ -102,7 +102,14 @@ export interface StockDocument {
     cancelled_by: PersonRef | null;
     cancelled_at: string | null;
     cancel_reason: string | null;
-    allowed_actions: ('edit' | 'post' | 'cancel' | 'reverse')[];
+    allowed_actions: ('edit' | 'post' | 'cancel' | 'reverse' | 'edit_posted' | 'delete')[];
+    edit_count: number;
+    edited_by: PersonRef | null;
+    edited_at: string | null;
+    is_deleted: boolean;
+    deleted_by: PersonRef | null;
+    deleted_at: string | null;
+    delete_reason: string | null;
     can_override_vendor_check: boolean;
     history?: { id: number; is_reversal: boolean; qty_in: string; qty_rejected: string; qty_out: string; balance_after: string; posted_at: string; user: string | null }[];
 }

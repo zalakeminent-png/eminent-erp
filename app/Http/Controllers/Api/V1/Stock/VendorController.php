@@ -139,6 +139,26 @@ class VendorController extends Controller
         return response()->json(['data' => $this->row($vendor->refresh()), 'message' => $vendor->is_active ? 'Vendor activated.' : 'Vendor deactivated. Its history is kept.']);
     }
 
+    /** Permanently deletes a vendor and its SKU mappings, unless stock entries refer to it. */
+    public function destroy(Vendor $vendor): JsonResponse
+    {
+        $this->ensureCompany($vendor);
+        $entries = StockDocument::withTrashed()->where('vendor_id', $vendor->id);
+        if ($count = (clone $entries)->count()) {
+            $numbers = $entries->orderBy('number')->limit(5)->pluck('number')->implode(', ');
+
+            return response()->json(['message' => "{$vendor->name} cannot be deleted because {$count} stock entr".($count === 1 ? 'y uses' : 'ies use')." this vendor ({$numbers}".($count > 5 ? ', …' : '').'). Deactivate the vendor instead.'], 409);
+        }
+        $snapshot = $vendor->only(['id', 'code', 'name', 'contact_person', 'phone', 'email', 'city']);
+        DB::transaction(function () use ($vendor) {
+            $vendor->mappings()->delete();
+            $vendor->delete();
+        });
+        $this->activity->log('vendor.deleted', null, $snapshot, "Deleted vendor {$snapshot['name']}");
+
+        return response()->json(['message' => "Vendor {$snapshot['name']} deleted."]);
+    }
+
     public function template(): StreamedResponse
     {
         return Csv::download('vendor-import-template', ['Vendor Name', 'Contact Person', 'Phone', 'Email', 'City', 'Address', 'Notes'], []);

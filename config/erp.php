@@ -92,12 +92,12 @@ return [
 
         // ---- Stock management ----------------------------------------------
         'stock-overview' => ['label' => 'Stock Overview', 'group' => 'Inventory', 'actions' => ['view', 'export']],
-        'opening-stock' => ['label' => 'Opening Stock', 'group' => 'Inventory', 'actions' => ['view', 'create', 'update', 'post', 'reverse']],
-        'skus' => ['label' => 'SKU Master', 'group' => 'Inventory', 'actions' => ['view', 'create', 'update', 'deactivate', 'import', 'export']],
-        'vendors' => ['label' => 'Vendor Master', 'group' => 'Inventory', 'actions' => ['view', 'create', 'update', 'deactivate', 'import', 'export']],
+        'opening-stock' => ['label' => 'Opening Stock', 'group' => 'Inventory', 'actions' => ['view', 'create', 'update', 'post', 'reverse', 'edit-posted', 'delete']],
+        'skus' => ['label' => 'SKU Master', 'group' => 'Inventory', 'actions' => ['view', 'create', 'update', 'deactivate', 'delete', 'import', 'export']],
+        'vendors' => ['label' => 'Vendor Master', 'group' => 'Inventory', 'actions' => ['view', 'create', 'update', 'deactivate', 'delete', 'import', 'export']],
         'vendor-skus' => ['label' => 'Vendor-SKU Mapping', 'group' => 'Inventory', 'actions' => ['view', 'create', 'update', 'delete', 'import']],
-        'inward' => ['label' => 'Inward Material', 'group' => 'Inventory', 'actions' => ['view', 'create', 'update', 'post', 'reverse', 'export', 'override-vendor-check']],
-        'outward' => ['label' => 'Outward Material', 'group' => 'Inventory', 'actions' => ['view', 'create', 'update', 'post', 'reverse', 'export']],
+        'inward' => ['label' => 'Inward Material', 'group' => 'Inventory', 'actions' => ['view', 'create', 'update', 'post', 'reverse', 'edit-posted', 'delete', 'export', 'override-vendor-check']],
+        'outward' => ['label' => 'Outward Material', 'group' => 'Inventory', 'actions' => ['view', 'create', 'update', 'post', 'reverse', 'edit-posted', 'delete', 'export']],
 
         // ---- Reserved namespaces for future modules (no functionality yet)
         'orders' => [

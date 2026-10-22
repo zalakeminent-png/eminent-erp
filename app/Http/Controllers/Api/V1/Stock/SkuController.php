@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\Structure\ChangesStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\Stock\Sku;
+use App\Models\Stock\StockDocument;
 use App\Models\Stock\VendorSku;
 use App\Services\ActivityLogger;
 use App\Services\Stock\StockOverview;
@@ -129,6 +130,29 @@ class SkuController extends Controller
         $this->changeStatus($request, $sku, 'skus', 'sku');
 
         return response()->json(['data' => $this->row($sku->refresh()), 'message' => $sku->is_active ? 'SKU activated.' : 'SKU deactivated. Its history is kept.']);
+    }
+
+    /**
+     * Permanently deletes a SKU and its vendor mappings. Refused while stock
+     * entries (including deleted ones kept for stock history) refer to it.
+     */
+    public function destroy(Sku $sku): JsonResponse
+    {
+        $this->ensureCompany($sku);
+        $entries = StockDocument::withTrashed()->where('sku_id', $sku->id);
+        if ($count = (clone $entries)->count()) {
+            $numbers = $entries->orderBy('number')->limit(5)->pluck('number')->implode(', ');
+
+            return response()->json(['message' => "SKU {$sku->sku} cannot be deleted because {$count} stock entr".($count === 1 ? 'y uses' : 'ies use')." it ({$numbers}".($count > 5 ? ', …' : '').'). Stock history must stay complete — deactivate the SKU instead.'], 409);
+        }
+        $snapshot = $sku->only(['id', 'sku', 'product_name', 'category', 'material', 'size', 'unit', 'reorder_level']);
+        DB::transaction(function () use ($sku) {
+            $sku->mappings()->delete();
+            $sku->delete();
+        });
+        $this->activity->log('sku.deleted', null, $snapshot, "Deleted SKU {$snapshot['sku']}");
+
+        return response()->json(['message' => "SKU {$snapshot['sku']} deleted."]);
     }
 
     public function template(): StreamedResponse

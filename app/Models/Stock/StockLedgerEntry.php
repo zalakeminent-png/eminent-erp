@@ -35,7 +35,8 @@ class StockLedgerEntry extends Model
 
     public function document(): BelongsTo
     {
-        return $this->belongsTo(StockDocument::class, 'document_id');
+        // Deleted entries stay visible in stock history.
+        return $this->belongsTo(StockDocument::class, 'document_id')->withTrashed();
     }
 
     public function sku(): BelongsTo

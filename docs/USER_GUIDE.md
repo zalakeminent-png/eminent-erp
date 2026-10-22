@@ -356,8 +356,8 @@ Every product you keep in stock.
 | Unit | Optional (PCS, KG …), shown next to quantities. |
 | Reorder level | Optional. Stock at or below it shows **LOW STOCK**. |
 
-- **Add SKU**, ✏️ edit, ⏻ deactivate/activate. A deactivated SKU keeps all its history but cannot be
-  used for new entries or mappings.
+- **Add SKU**, ✏️ edit, ⏻ deactivate/activate, 🗑 delete (Admin; only while unused). A deactivated SKU
+  keeps all its history but cannot be used for new entries or mappings.
 - **Import**: download the template, fill it in Excel, *Save As → CSV*, then **Check file** (shows
   every row's result without saving) and **Import**. Existing SKU codes are skipped, never changed.
 - **Export** downloads the filtered list as CSV.
@@ -405,11 +405,22 @@ Material going out — production use, job work, samples, dispatch.
 
 ### 8.5 Posting, reversing and cancelling
 - **Draft** — can be edited or cancelled; does not affect stock.
-- **Posted** — stock updated. Posted entries cannot be edited or deleted.
+- **Posted** — stock updated. Only an Admin can edit or delete a posted entry (see below).
 - **Reverse** (posted entries, with a reason) — undoes the stock effect with a correcting movement.
   The entry stays in the list marked *Reversed*. Reversing an inward is refused if that stock has
   already been issued.
 - **Cancel** (drafts only) — the draft is kept in the list as *Cancelled*.
+
+**Admin: edit and delete everything** (permissions *edit posted* and *delete*, Admin only by default):
+- **SKUs and vendors** — 🗑 **Delete** removes the record and its mappings. Refused while any stock
+  entry uses it (the message lists the entries); deactivate it instead.
+- **Draft / cancelled entries** — **Delete** removes them (they never affected stock).
+- **Posted entries** — **Edit**: change any field, give a **reason**, and click *Save changes &
+  recalculate stock*. The old quantities are taken out and the new ones put in automatically.
+  **Delete** (reason required) removes the entry's stock effect and hides it from the list.
+- Both are refused if stock would go below zero (for example, deleting a receipt whose stock was
+  already issued). Every edit and deletion is recorded in **Activity Logs** with old and new values;
+  deleted entries can still be viewed with the status filter **Deleted** and in each SKU's history.
 
 ### 8.6 Stock Overview
 One row per SKU — the same columns as the Live Stock Sheet: **Opening Stock, Total Inward, Total

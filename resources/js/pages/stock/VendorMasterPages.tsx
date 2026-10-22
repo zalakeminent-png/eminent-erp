@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Link, NavLink, useParams } from 'react-router-dom';
+import { Link, NavLink, useNavigate, useParams } from 'react-router-dom';
 import { Eye, Link2, Pencil, Plus, Power, Trash2, Truck, Upload } from 'lucide-react';
 import { useAuth } from '@/auth/AuthContext';
 import { useApi, useDebouncedValue } from '@/hooks/useApi';
@@ -15,7 +15,7 @@ import { api, errorMessage, fieldErrors } from '@/lib/api';
 import { cx, formatDate } from '@/lib/format';
 import type { PaginationMeta } from '@/types';
 import { SearchInput, filterInputClass, useListParams } from '@/pages/structure/components/ListControls';
-import { ExportButton, HeaderActions, ImportDialog, SkuPicker, StockFilters, VendorPicker, formatQty } from './components';
+import { DeleteButton, ExportButton, HeaderActions, ImportDialog, SkuPicker, StockFilters, VendorPicker, formatQty } from './components';
 import type { Mapping, Sku, Vendor } from './types';
 
 function Tabs() {
@@ -111,6 +111,10 @@ export function VendorListPage() {
                                         <Td className="whitespace-nowrap text-right">
                                             <ButtonLink to={`/inventory/vendors/${v.id}`} variant="ghost" size="sm" aria-label={`View ${v.name}`} icon={<Eye className="h-4 w-4" />} />
                                             {can('vendors.update') && <Button variant="ghost" size="sm" aria-label={`Edit ${v.name}`} icon={<Pencil className="h-4 w-4" />} onClick={() => setEditing(v)} />}
+                                            {can('vendors.delete') && (
+                                                <DeleteButton url={`/vendors/${v.id}`} label={v.name} onDeleted={reload}
+                                                    message={<>Permanently delete <strong>{v.name}</strong> ({v.code}) and its SKU mappings? This is only possible while no stock entry uses the vendor; otherwise deactivate it.</>} />
+                                            )}
                                             {can(v.is_active ? 'vendors.deactivate' : 'vendors.update') && (
                                                 <Button variant="ghost" size="sm" aria-label={`${v.is_active ? 'Deactivate' : 'Activate'} ${v.name}`} onClick={() => setStatusTarget(v)}
                                                     icon={<Power className={`h-4 w-4 ${v.is_active ? 'text-red-500' : 'text-emerald-600'}`} />} />
@@ -188,6 +192,7 @@ export function VendorForm({ vendor, onClose, onSaved }: { vendor: Vendor | null
 
 export function VendorDetailsPage() {
     const { id } = useParams();
+    const navigate = useNavigate();
     const { can } = useAuth();
     const { data, loading, error, reload } = useApi<{ data: Vendor & { mappings: Mapping[]; inward_summary: { posted_entries: number; recent: { id: number; number: string; date: string; sku: string; product_name: string; received_qty: string; rejected_qty: string; location: string }[] } } }>(`/vendors/${id}`);
     const [editing, setEditing] = useState(false);
@@ -199,7 +204,13 @@ export function VendorDetailsPage() {
     return (
         <>
             <PageHeader title={v.name} description={<span className="font-mono">{v.code}</span>} breadcrumb={<Link to="/inventory/vendors" className="hover:underline">Vendor Master</Link>}
-                actions={can('vendors.update') && <Button variant="secondary" icon={<Pencil className="h-4 w-4" />} onClick={() => setEditing(true)}>Edit</Button>} />
+                actions={
+                    <HeaderActions>
+                        {can('vendors.update') && <Button variant="secondary" icon={<Pencil className="h-4 w-4" />} onClick={() => setEditing(true)}>Edit</Button>}
+                        {can('vendors.delete') && <DeleteButton asButton url={`/vendors/${v.id}`} label={v.name} onDeleted={() => navigate('/inventory/vendors')}
+                            message={<>Permanently delete <strong>{v.name}</strong> and its SKU mappings? Only possible while no stock entry uses this vendor.</>} />}
+                    </HeaderActions>
+                } />
             {!v.is_active && <Alert tone="warning" className="mb-4">This vendor is inactive and cannot be used for new inward entries or mappings.</Alert>}
             <div className="grid gap-4 lg:grid-cols-3">
                 <Card>

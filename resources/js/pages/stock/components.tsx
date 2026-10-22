@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import { CheckCircle2, Download, Search, Upload, X } from 'lucide-react';
+import { CheckCircle2, Download, Search, Trash2, Upload, X } from 'lucide-react';
 import { Badge } from '@/components/ui/Feedback';
 import { Alert } from '@/components/ui/Feedback';
 import { Button } from '@/components/ui/Button';
@@ -35,6 +35,61 @@ export function DocStatusBadge({ status }: { status: DocStatus }) {
 export function VendorCheckBadge({ mapped }: { mapped: boolean | null }) {
     if (mapped === null) return null;
     return mapped ? <Badge tone="success">Mapped</Badge> : <Badge tone="danger">⚠ Not mapped</Badge>;
+}
+
+/**
+ * Delete with confirmation. An optional reason box (required for posted
+ * stock entries). The server decides; its refusal message is shown as-is.
+ */
+export function DeleteButton({ url, label, message, onDeleted, reason = 'none', asButton = false }: {
+    url: string; label: string; message: ReactNode; onDeleted: () => void; reason?: 'none' | 'optional' | 'required'; asButton?: boolean;
+}) {
+    const toast = useToast();
+    const [open, setOpen] = useState(false);
+    const [text, setText] = useState('');
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const run = async () => {
+        setBusy(true);
+        setError(null);
+        try {
+            const { data } = await api.delete<{ message: string }>(url, reason === 'none' ? undefined : { data: { reason: text || null } });
+            toast.success(data.message);
+            setOpen(false);
+            onDeleted();
+        } catch (err) {
+            const fe = fieldErrors(err);
+            setError(Object.values(fe)[0] ?? errorMessage(err));
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    return (
+        <>
+            {asButton
+                ? <Button variant="danger" icon={<Trash2 className="h-4 w-4" />} onClick={() => setOpen(true)}>Delete</Button>
+                : <Button variant="ghost" size="sm" aria-label={`Delete ${label}`} icon={<Trash2 className="h-4 w-4 text-red-500" />} onClick={() => setOpen(true)} />}
+            {open && (
+                <Modal open title={`Delete ${label}`} onClose={() => !busy && setOpen(false)}
+                    footer={<><Button variant="secondary" disabled={busy} onClick={() => setOpen(false)}>Cancel</Button>
+                        <Button variant="danger" loading={busy} disabled={reason === 'required' && text.trim().length < 3} onClick={run}>Delete</Button></>}>
+                    <div className="space-y-3">
+                        <div>{message}</div>
+                        {reason !== 'none' && (
+                            <label className="block">
+                                <span className="mb-1.5 block text-sm font-medium text-slate-700">Reason{reason === 'required' && <span className="ml-0.5 text-red-500">*</span>}</span>
+                                <textarea aria-label="Reason" rows={2} value={text} onChange={(e) => setText(e.target.value)}
+                                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100" />
+                            </label>
+                        )}
+                        {error && <Alert tone="danger">{error}</Alert>}
+                    </div>
+                </Modal>
+            )}
+        </>
+    );
 }
 
 /** Header buttons stay on one row; the page description wraps instead. */
